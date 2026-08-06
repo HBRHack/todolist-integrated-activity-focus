@@ -8,16 +8,21 @@ Rectangle {
 
     property alias text: lbl.text
     property bool danger: false
+    property bool disabled: false
     signal clicked()
 
-    implicitWidth: 24
-    implicitHeight: 24
+    implicitWidth: 28
+    implicitHeight: 28
     radius: 0
-    color: mouse.containsMouse && !mouse.pressed ? Theme.colorSurfaceAlt
+    color: root.disabled ? "transparent"
+         : mouse.containsMouse && !mouse.pressed ? Theme.colorSurfaceAlt
          : mouse.pressed ? Theme.colorSurfaceAlt : "transparent"
-    border.color: root.activeFocus ? Theme.colorAccent : "transparent"
-    border.width: root.activeFocus ? 2 : 0
+    border.color: root.disabled ? Theme.colorMuted
+                : root.activeFocus ? Theme.colorAccent : "transparent"
+    border.width: root.disabled ? Theme.borderWidthThin
+                : root.activeFocus ? Theme.borderWidth : 0
     activeFocusOnTab: true
+    opacity: root.disabled ? 0.5 : 1.0
 
     Text {
         id: lbl
@@ -25,7 +30,8 @@ Rectangle {
         font.family: Theme.fontFamilyBody
         font.pixelSize: Theme.fontSizeMedium
         font.bold: true
-        color: root.danger ? Theme.colorDanger : Theme.colorMuted
+        color: root.disabled ? Theme.colorMuted
+             : root.danger ? Theme.colorDanger : Theme.colorText
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter
     }
@@ -33,15 +39,26 @@ Rectangle {
     MouseArea {
         id: mouse
         anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
+        hoverEnabled: !root.disabled
+        cursorShape: root.disabled ? Qt.ArrowCursor : Qt.PointingHandCursor
+        onClicked: {
+            if (!root.disabled)
+                root.clicked()
+        }
     }
 
     Keys.onPressed: {
-        if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
+        if (!root.disabled && (event.key === Qt.Key_Space || event.key === Qt.Key_Return)) {
             root.clicked()
             event.accepted = true
         }
     }
+
+    states: [
+        State {
+            name: "disabled"
+            when: root.disabled
+            PropertyChanges { target: root; opacity: 0.5 }
+        }
+    ]
 }

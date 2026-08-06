@@ -1,84 +1,74 @@
-# This file is used to ignore files which are generated
-# ----------------------------------------------------------------------------
-
-*~
-*.autosave
-*.a
-*.core
-*.moc
+```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
 *.o
 *.obj
-*.orig
-*.rej
-*.so
-*.so.*
-*_pch.h.cpp
-*_resource.rc
-*.qm
-.#*
-*.*#
-core
-!core/
-tags
+dist/
+build/
+target/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+.julia/
+zig-cache/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
 .DS_Store
-.directory
-*.debug
-Makefile*
-*.prl
-*.app
-moc_*.cpp
-ui_*.h
-qrc_*.cpp
 Thumbs.db
-*.res
-*.rc
-/.qmake.cache
-/.qmake.stash
 
-# qtcreator generated files
-*.pro.user*
-CMakeLists.txt.user*
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# xemacs temporary files
-*.flc
-
-# Vim temporary files
-.*.swp
-
-# Visual Studio generated files
-*.ib_pdb_index
-*.idb
-*.ilk
-*.pdb
-*.sln
-*.suo
-*.vcproj
-*vcproj.*.*.user
-*.ncb
-*.sdf
-*.opensdf
-*.vcxproj
-*vcxproj.*
-
-# MinGW generated files
-*.Debug
-*.Release
-
-# Python byte code
+# Python specific
 *.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
 
-# Binaries
-# --------
-*.dll
-*.exe
-
-*.db
-
-# Shadow build (compile test — lihat AGENTS.md "Compile test")
-/build/
-/build-tst/
-/.obj/
-/.moc/
-/.rcc/
-# build-tests/ (shadow build untuk suite QML + backend)
-/build-tests/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```

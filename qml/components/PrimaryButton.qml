@@ -13,6 +13,7 @@ Rectangle {
     signal clicked()
 
     implicitHeight: Theme.controlHeight
+    implicitWidth: lbl.width + Theme.spacingHuge
     radius: Theme.radiusMedium
     color: "transparent"
     activeFocusOnTab: true
@@ -20,11 +21,12 @@ Rectangle {
     // Hard shadow slab — tanpa blur (DropShadow = slop)
     Rectangle {
         id: shadowRect
-        anchors.fill: parent
+        anchors.fill: face
         anchors.leftMargin: Theme.shadowOffset
         anchors.topMargin: Theme.shadowOffset
         color: Theme.colorShadow
-        visible: !mouse.pressed && !root.disabled
+        visible: !mouse.pressed && !root.disabled && face.visible
+        z: -1
     }
 
     Rectangle {
@@ -34,12 +36,14 @@ Rectangle {
         color: root.highlighted ? Theme.colorAccent
              : (mouse.hovered && !mouse.pressed) ? Theme.colorSurfaceAlt
              : mouse.pressed ? Theme.colorSurfaceAlt : Theme.colorSurface
-        border.color: root.activeFocus ? Theme.colorAccent : Theme.colorBorder
-        border.width: root.activeFocus ? 3 : Theme.borderWidth
+        border.color: root.disabled ? Theme.colorMuted
+                  : root.activeFocus ? Theme.colorAccent : Theme.colorBorder
+        border.width: root.disabled ? Theme.borderWidthThin
+                  : root.activeFocus ? Theme.borderWidth : Theme.borderWidth
 
         transform: Translate {
-            x: mouse.pressed ? 2 : 0
-            y: mouse.pressed ? 2 : 0
+            x: mouse.pressed && !root.disabled ? 2 : 0
+            y: mouse.pressed && !root.disabled ? 2 : 0
         }
 
         Text {
@@ -50,15 +54,16 @@ Rectangle {
             font.bold: true
             font.capitalization: Font.AllUppercase
             font.letterSpacing: 0.5
-            color: root.highlighted ? Theme.colorAccentText : Theme.colorText
+            color: root.disabled ? Theme.colorMuted
+                 : root.highlighted ? Theme.colorAccentText : Theme.colorText
         }
     }
 
     MouseArea {
         id: mouse
         anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        hoverEnabled: !root.disabled
+        cursorShape: root.disabled ? Qt.ArrowCursor : Qt.PointingHandCursor
         onClicked: {
             if (!root.disabled)
                 root.clicked()
@@ -76,7 +81,7 @@ Rectangle {
         State {
             name: "disabled"
             when: root.disabled
-            PropertyChanges { target: root; opacity: 0.35 }
+            PropertyChanges { target: root; opacity: 0.5 }
         }
     ]
 }
