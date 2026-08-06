@@ -4,6 +4,10 @@
         <file>theme/Theme.qml</file>
         <file>theme/qmldir</file>
         <file>components/PrimaryButton.qml</file>
+        <file>components/Chip.qml</file>
+        <file>components/SectionHeader.qml</file>
+        <file>components/NavItem.qml</file>
+        <file>components/SquareToolButton.qml</file>
         <file>components/ItemDetailPopup.qml</file>
         <file>components/Format.js</file>
         <file>components/qmldir</file>

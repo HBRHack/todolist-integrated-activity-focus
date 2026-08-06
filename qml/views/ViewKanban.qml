@@ -144,11 +144,19 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // Tab bar board
+        // Tab bar board — strip surface + rule bawah 2px
         Rectangle {
             Layout.fillWidth: true
             height: Theme.tabBarHeight
             color: Theme.colorSurface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.colorBorder
+            }
 
             Row {
                 anchors.fill: parent
@@ -157,29 +165,14 @@ Rectangle {
 
                 Repeater {
                     model: boards
-                    Rectangle {
-                        width: tabLabel.width + Theme.spacingHuge
-                        height: Theme.smallControlHeight
-                        radius: Theme.radiusSmall
-                        color: selectedBoardId === modelData.id ? Theme.colorAccent : "transparent"
-
-                        Text {
-                            id: tabLabel
-                            anchors.centerIn: parent
-                            text: modelData.name
-                            font.pixelSize: Theme.fontSizeBody
-                            font.bold: selectedBoardId === modelData.id
-                            color: selectedBoardId === modelData.id ? Theme.colorAccentText : Theme.colorText
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: selectBoard(modelData.id)
-                            onDoubleClicked: {
-                                renameBoardId = modelData.id
-                                renameBoardField.text = modelData.name
-                                renameBoardVisible = true
-                            }
+                    Chip {
+                        text: modelData.name
+                        active: selectedBoardId === modelData.id
+                        onClicked: selectBoard(modelData.id)
+                        onDoubleClicked: {
+                            renameBoardId = modelData.id
+                            renameBoardField.text = modelData.name
+                            renameBoardVisible = true
                         }
                     }
                 }
@@ -188,12 +181,15 @@ Rectangle {
                 Rectangle {
                     width: Theme.smallControlHeight
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     color: addBoardMouse.containsMouse ? Theme.colorSurfaceAlt : "transparent"
+                    border.color: addBoardMouse.containsMouse ? Theme.colorAccent : Theme.colorText
+                    border.width: Theme.borderWidth
 
                     Text {
                         anchors.centerIn: parent
                         text: "+"
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeTitle
                         font.bold: true
                         color: Theme.colorAccent
@@ -213,9 +209,9 @@ Rectangle {
                     visible: newBoardVisible
                     width: newBoardField.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     border.color: Theme.colorAccent
-                    border.width: 1
+                    border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
                     TextInput {
@@ -223,6 +219,7 @@ Rectangle {
                         objectName: "newBoardField"
                         anchors.centerIn: parent
                         width: 120
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
                         color: Theme.colorText
                         clip: true
@@ -241,15 +238,16 @@ Rectangle {
                     visible: renameBoardVisible
                     width: renameBoardField.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     border.color: Theme.colorAccent
-                    border.width: 1
+                    border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
                     TextInput {
                         id: renameBoardField
                         anchors.centerIn: parent
                         width: 120
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
                         color: Theme.colorText
                         clip: true
@@ -272,18 +270,19 @@ Rectangle {
             }
         }
 
-        // Separator
-        Rectangle {
-            Layout.fillWidth: true
-            height: 1
-            color: Theme.colorBorder
-        }
-
-        // Column header row
+        // Column header row — tombol kotak kecil
         Rectangle {
             Layout.fillWidth: true
             height: Theme.headerHeight
             color: Theme.colorBackground
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Theme.borderWidth
+                color: Theme.colorBorder
+            }
 
             Row {
                 anchors.fill: parent
@@ -295,7 +294,7 @@ Rectangle {
                     Rectangle {
                         width: Theme.columnWidth
                         height: Theme.smallControlHeight
-                        radius: Theme.radiusSmall
+                        radius: 0
                         color: "transparent"
 
                         Row {
@@ -303,25 +302,22 @@ Rectangle {
                             anchors.margins: Theme.spacingTiny
                             spacing: Theme.spacingSmall
 
-                            Text {
-                                text: "‹"
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
-                                color: Theme.colorMuted
-                                verticalAlignment: Text.AlignVCenter
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: root.moveColumnLeft(modelData.id, index)
-                                }
+                            SquareToolButton {
+                                text: "\u2039"
+                                objectName: "moveColLeft_" + modelData.id
+                                onClicked: root.moveColumnLeft(modelData.id, index)
                             }
 
                             Text {
+                                width: 132
                                 text: modelData.name
+                                font.family: Theme.fontFamilyBody
                                 font.pixelSize: Theme.fontSizeMedium
                                 font.bold: true
+                                font.capitalization: Font.AllUppercase
                                 color: Theme.colorText
                                 verticalAlignment: Text.AlignVCenter
+                                elide: Text.ElideRight
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -333,30 +329,17 @@ Rectangle {
                                 }
                             }
 
-                            Text {
-                                text: "›"
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
-                                color: Theme.colorMuted
-                                verticalAlignment: Text.AlignVCenter
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: root.moveColumnRight(modelData.id, index)
-                                }
+                            SquareToolButton {
+                                text: "\u203A"
+                                objectName: "moveColRight_" + modelData.id
+                                onClicked: root.moveColumnRight(modelData.id, index)
                             }
 
-                            Text {
-                                text: "×"
-                                font.pixelSize: Theme.fontSizeMedium
-                                color: Theme.colorDanger
-                                verticalAlignment: Text.AlignVCenter
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    objectName: "deleteColumn_" + modelData.id
-                                    onClicked: deleteColumn(modelData.id)
-                                }
+                            SquareToolButton {
+                                text: "\u00D7"
+                                objectName: "deleteColumn_" + modelData.id
+                                danger: true
+                                onClicked: deleteColumn(modelData.id)
                             }
                         }
                     }
@@ -366,14 +349,18 @@ Rectangle {
                 Rectangle {
                     width: addColumnBtn.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     color: addColumnMouse.containsMouse ? Theme.colorSurfaceAlt : "transparent"
+                    border.color: Theme.colorAccent
+                    border.width: Theme.borderWidth
 
                     Text {
                         id: addColumnBtn
                         anchors.centerIn: parent
                         text: qsTr("+ Kolom")
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
+                        font.bold: true
                         color: Theme.colorAccent
                     }
 
@@ -394,9 +381,9 @@ Rectangle {
                     visible: newColumnVisible
                     width: newColumnField.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     border.color: Theme.colorAccent
-                    border.width: 1
+                    border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
                     TextInput {
@@ -404,6 +391,7 @@ Rectangle {
                         objectName: "newColumnField"
                         anchors.centerIn: parent
                         width: 100
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
                         color: Theme.colorText
                         clip: true
@@ -421,15 +409,16 @@ Rectangle {
                     visible: renameColumnVisible
                     width: renameColumnField.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
+                    radius: 0
                     border.color: Theme.colorAccent
-                    border.width: 1
+                    border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
                     TextInput {
                         id: renameColumnField
                         anchors.centerIn: parent
                         width: 120
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
                         color: Theme.colorText
                         clip: true
@@ -452,13 +441,6 @@ Rectangle {
             }
         }
 
-        // Separator
-        Rectangle {
-            Layout.fillWidth: true
-            height: 1
-            color: Theme.colorBorder
-        }
-
         // Columns area
         Flickable {
             Layout.fillWidth: true
@@ -479,10 +461,10 @@ Rectangle {
                             id: columnRect
                             width: Theme.columnWidth
                             height: parent ? parent.height - Theme.spacingHuge : 0
-                            radius: Theme.radiusLarge
+                            radius: 0
                             color: Theme.colorSurface
                             border.color: dropHighlight ? Theme.colorAccent : Theme.colorBorder
-                            border.width: dropHighlight ? 2 : 1
+                            border.width: dropHighlight ? 3 : Theme.borderWidth
 
                             property bool dropHighlight: false
 
@@ -491,12 +473,29 @@ Rectangle {
                             anchors.margins: Theme.spacingSmall
                             spacing: Theme.spacingSmall
 
-                            // Column header
-                            Text {
-                                text: modelData.name
-                                font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
-                                color: Theme.colorText
+                            // Column header — display + count mono
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingSmall
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.name
+                                    font.family: Theme.fontFamilyBody
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                    font.capitalization: Font.AllUppercase
+                                    color: Theme.colorText
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    text: columnList.count < 10 ? "0" + columnList.count : "" + columnList.count
+                                    font.family: Theme.fontFamilyMono
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: true
+                                    color: Theme.colorMuted
+                                }
                             }
 
                             // Item list
@@ -516,15 +515,102 @@ Rectangle {
                                     policy: ScrollBar.AsNeeded
                                 }
 
-                                delegate: Rectangle {
-                                    id: card
+                                delegate: Item {
+                                    id: cardRoot
                                     objectName: "card_" + columnId + "_" + orderIndex
                                     width: ListView.view.width
                                     height: Theme.cardHeight
-                                    radius: Theme.radiusMedium
-                                    color: Theme.colorSurfaceAlt
-                                    border.color: Theme.colorBorder
-                                    border.width: 1
+
+                                    // Hard shadow DI BELAKANG kartu
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.rightMargin: Theme.shadowOffset
+                                        anchors.bottomMargin: Theme.shadowOffset
+                                        color: Theme.colorShadow
+                                        visible: !dragArea.dragActive
+                                    }
+
+                                    // Kartu — surface (terang/dark ikut theme)
+                                    Rectangle {
+                                        id: card
+                                        anchors.fill: parent
+                                        radius: 0
+                                        color: dragArea.dragActive ? Theme.colorSurfaceAlt
+                                             : dragArea.containsMouse ? Theme.colorSurfaceAlt : Theme.colorSurface
+                                        border.color: Theme.colorBorder
+                                        border.width: Theme.borderWidth
+
+                                        // Accent bar kiri — kontras jelas vs surface
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.top: parent.top
+                                            anchors.bottom: parent.bottom
+                                            width: 3
+                                            color: Theme.colorAccent
+                                        }
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: Theme.spacingSmall
+                                            spacing: Theme.spacingTiny
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: title
+                                                elide: Text.ElideRight
+                                                font.family: Theme.fontFamilyBody
+                                                font.pixelSize: Theme.fontSizeBody
+                                                font.bold: true
+                                                color: Theme.colorText
+                                            }
+
+                                            Text {
+                                                text: Format.dueDateString(dueDate)
+                                                font.family: Theme.fontFamilyMono
+                                                font.pixelSize: Theme.fontSizeCaption
+                                                color: Theme.colorMuted
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: dragArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            property bool dragActive: false
+                                            property point pressPos: Qt.point(0, 0)
+
+                                            onPressed: (mouse) => {
+                                                pressPos = Qt.point(mouse.x, mouse.y)
+                                                root.dragState = {
+                                                    itemId: itemId,
+                                                    sourceColumnId: columnId,
+                                                    sourceRow: index,
+                                                    title: title
+                                                }
+                                            }
+                                            onPositionChanged: (mouse) => {
+                                                if (dragActive) {
+                                                    root.ghostMove(card.mapToItem(root, mouse.x, mouse.y))
+                                                    return
+                                                }
+                                                if (!pressed)
+                                                    return
+                                                var dx = mouse.x - pressPos.x
+                                                var dy = mouse.y - pressPos.y
+                                                if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
+                                                    return
+                                                dragActive = true
+                                                root.ghostShow(title)
+                                            }
+                                            onReleased: {
+                                                if (dragActive) {
+                                                    card.Drag.drop()
+                                                    root.ghostHide()
+                                                }
+                                                dragActive = false
+                                            }
+                                        }
+                                    }
 
                                     Drag.active: dragArea.dragActive
                                     Drag.source: card
@@ -533,71 +619,13 @@ Rectangle {
                                     Drag.hotSpot.y: card.height / 2
 
                                     opacity: dragArea.dragActive ? 0.4 : 1.0
-
-                                    ColumnLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: Theme.spacingSmall
-                                        spacing: Theme.spacingTiny
-
-                                        Text {
-                                            Layout.fillWidth: true
-                                            text: title
-                                            elide: Text.ElideRight
-                                            font.pixelSize: Theme.fontSizeBody
-                                            font.bold: true
-                                            color: Theme.colorText
-                                        }
-
-                                        Text {
-                                            text: Format.dueDateString(dueDate)
-                                            font.pixelSize: Theme.fontSizeCaption
-                                            color: Theme.colorMuted
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        id: dragArea
-                                        anchors.fill: parent
-                                        property bool dragActive: false
-                                        property point pressPos: Qt.point(0, 0)
-
-                                        onPressed: (mouse) => {
-                                            pressPos = Qt.point(mouse.x, mouse.y)
-                                            root.dragState = {
-                                                itemId: itemId,
-                                                sourceColumnId: columnId,
-                                                sourceRow: index,
-                                                title: title
-                                            }
-                                        }
-                                        onPositionChanged: (mouse) => {
-                                            if (dragActive) {
-                                                root.ghostMove(card.mapToItem(root, mouse.x, mouse.y))
-                                                return
-                                            }
-                                            if (!pressed)
-                                                return
-                                            var dx = mouse.x - pressPos.x
-                                            var dy = mouse.y - pressPos.y
-                                            if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
-                                                return
-                                            dragActive = true
-                                            root.ghostShow(title)
-                                        }
-                                        onReleased: {
-                                            if (dragActive) {
-                                                card.Drag.drop()
-                                                root.ghostHide()
-                                            }
-                                            dragActive = false
-                                        }
-                                    }
                                 }
 
                                 Text {
                                     anchors.centerIn: parent
                                     visible: parent.count === 0
                                     text: qsTr("Belum ada Item")
+                                    font.family: Theme.fontFamilyBody
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.colorMuted
                                 }
@@ -625,6 +653,7 @@ Rectangle {
         anchors.centerIn: parent
         visible: boards.length === 0
         text: qsTr("Belum ada Board. Klik '+' untuk membuat Board baru.")
+        font.family: Theme.fontFamilyBody
         font.pixelSize: Theme.fontSizeMedium
         color: Theme.colorMuted
     }
@@ -641,10 +670,10 @@ Rectangle {
         padding: 0
 
         background: Rectangle {
-            radius: Theme.radiusLarge
+            radius: 0
             color: Theme.colorSurface
             border.color: Theme.colorBorder
-            border.width: 1
+            border.width: Theme.borderWidth
         }
 
         ColumnLayout {
@@ -655,8 +684,10 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: qsTr("Setup Awal — Mode Peta")
+                font.family: Theme.fontFamilyDisplay
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
+                font.capitalization: Font.AllUppercase
                 color: Theme.colorText
             }
 
@@ -664,6 +695,7 @@ Rectangle {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text: qsTr("Pilih cara Peta menampilkan Board/Item. Pilihan tersimpan dan bisa diganti kapan saja lewat dropdown di area Peta.")
+                font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.colorMuted
             }
@@ -700,17 +732,30 @@ Rectangle {
         z: 100
         width: Theme.columnWidth - Theme.spacingLarge
         height: Theme.cardHeight
-        radius: Theme.radiusMedium
-        color: Theme.colorSurfaceAlt
-        border.color: Theme.colorAccent
-        border.width: 2
-        opacity: 0.9
+        radius: 0
+        color: Theme.colorSurface
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.leftMargin: Theme.shadowOffset
+            anchors.topMargin: Theme.shadowOffset
+            color: Theme.colorShadow
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorAccent
+            border.width: Theme.borderWidth
+        }
 
         Text {
             id: dragGhostTitle
             anchors.fill: parent
             anchors.margins: Theme.spacingSmall
             elide: Text.ElideRight
+            font.family: Theme.fontFamilyBody
             font.pixelSize: Theme.fontSizeBody
             font.bold: true
             color: Theme.colorText

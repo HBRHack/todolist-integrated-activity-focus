@@ -40,10 +40,10 @@ Popup {
     }
 
     background: Rectangle {
-        radius: Theme.radiusLarge
+        radius: 0
         color: Theme.colorSurface
         border.color: Theme.colorBorder
-        border.width: 1
+        border.width: Theme.borderWidth
     }
 
     ColumnLayout {
@@ -56,8 +56,11 @@ Popup {
             Layout.fillWidth: true
             text: ""
             elide: Text.ElideRight
+            font.family: Theme.fontFamilyDisplay
             font.pixelSize: Theme.fontSizeLarge
             font.bold: true
+            font.capitalization: Font.AllUppercase
+            font.letterSpacing: Theme.letterSpacingDisplay
             color: Theme.colorText
         }
 
@@ -65,8 +68,15 @@ Popup {
             id: detailInfo
             Layout.fillWidth: true
             text: ""
+            font.family: Theme.fontFamilyMono
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.colorMuted
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: Theme.borderWidth
+            color: Theme.colorBorder
         }
 
         RowLayout {
@@ -80,6 +90,7 @@ Popup {
                 Layout.preferredHeight: Theme.controlHeight
                 verticalAlignment: Text.AlignVCenter
                 padding: 8
+                font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.colorText
                 selectByMouse: true
@@ -87,10 +98,10 @@ Popup {
                 placeholderTextColor: Theme.colorMuted
                 validator: RegExpValidator { regExp: /^\d{4}-\d{2}-\d{2}$/ }
                 background: Rectangle {
-                    radius: Theme.radiusMedium
+                    radius: 0
                     color: Theme.colorSurfaceAlt
-                    border.color: Theme.colorBorder
-                    border.width: 1
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
                 }
             }
 
@@ -105,6 +116,8 @@ Popup {
         ComboBox {
             id: detailMoveBox
             Layout.fillWidth: true
+            Layout.preferredHeight: Theme.controlHeight
+            font.family: Theme.fontFamilyBody
             font.pixelSize: Theme.fontSizeSmall
             model: root.boardOptions
             textRole: "label"
@@ -115,23 +128,25 @@ Popup {
                 currentIndex = -1
             }
             background: Rectangle {
-                radius: Theme.radiusMedium
+                radius: 0
                 color: Theme.colorSurfaceAlt
                 border.color: Theme.colorBorder
-                border.width: 1
+                border.width: Theme.borderWidth
             }
             contentItem: Text {
                 text: detailMoveBox.displayText
                 font: detailMoveBox.font
                 color: Theme.colorText
                 verticalAlignment: Text.AlignVCenter
+                leftPadding: Theme.spacingSmall
+                rightPadding: Theme.spacingHuge
                 elide: Text.ElideRight
             }
             indicator: Rectangle {
-                x: detailMoveBox.width - width - 10
+                x: detailMoveBox.width - width - 14
                 y: detailMoveBox.height / 2 - height / 2
-                width: 10
-                height: 6
+                width: 8
+                height: 2
                 color: Theme.colorMuted
             }
         }

@@ -33,31 +33,68 @@ ApplicationWindow {
             anchors.fill: parent
             spacing: 0
 
+            // Rail navigasi — slab dengan rule kanan 2px, item aktif = ink fill
             Rectangle {
                 Layout.preferredWidth: Theme.sidebarWidth
                 Layout.fillHeight: true
                 color: Theme.colorSurface
 
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    width: Theme.borderWidth
+                    color: Theme.colorBorder
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: Theme.spacingMedium
-                    spacing: Theme.spacingSmall
+                    spacing: Theme.spacingTiny
 
-                    Text {
-                        text: qsTr("Peta Ide")
-                        font.pixelSize: Theme.fontSizeTitle
-                        font.bold: true
-                        color: Theme.colorAccent
+                    // Logotype block — slab ink
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 54
+                        color: Theme.colorRail
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingMedium
+                            spacing: 2
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("Peta Ide")
+                                font.family: Theme.fontFamilyDisplay
+                                font.pixelSize: Theme.fontSizeTitle
+                                font.bold: true
+                                font.capitalization: Font.AllUppercase
+                                font.letterSpacing: Theme.letterSpacingDisplay
+                                color: Theme.colorRailText
+                            }
+
+                            Text {
+                                text: qsTr("Versi %1").arg(typeof appVersion !== "undefined" ? appVersion : "")
+                                font.family: Theme.fontFamilyMono
+                                font.pixelSize: Theme.fontSizeCaption
+                                color: Theme.colorMuted
+                            }
+                        }
                     }
 
-                    Item { height: Theme.spacingTiny }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Theme.colorBorder
+                    }
 
                     Repeater {
                         model: win.navModel
-                        PrimaryButton {
+                        NavItem {
                             Layout.fillWidth: true
+                            index: modelData.index + 1
                             text: modelData.label
-                            highlighted: win.currentIndex === modelData.index
+                            active: win.currentIndex === modelData.index
                             onClicked: win.currentIndex = modelData.index
                         }
                     }

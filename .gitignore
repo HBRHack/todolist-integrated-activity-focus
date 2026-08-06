@@ -80,3 +80,5 @@ CMakeLists.txt.user*
 /.obj/
 /.moc/
 /.rcc/
+# build-tests/ (shadow build untuk suite QML + backend)
+/build-tests/

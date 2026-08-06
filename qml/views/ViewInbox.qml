@@ -93,13 +93,34 @@ Rectangle {
         anchors.margins: Theme.spacingLarge
         spacing: Theme.spacingMedium
 
-        Text {
-            text: qsTr("Inbox")
-            font.pixelSize: Theme.fontSizePageTitle
-            font.bold: true
-            color: Theme.colorText
+        // Header — display besar + counter mono
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingSmall
+
+            Text {
+                text: qsTr("Inbox")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizePageTitle
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: Theme.letterSpacingDisplay
+                color: Theme.colorText
+            }
+
+            Text {
+                text: listView.count < 10 ? "0" + listView.count : "" + listView.count
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
+                color: Theme.colorMuted
+                verticalAlignment: Text.AlignBottom
+            }
+
+            Item { Layout.fillWidth: true }
         }
 
+        // Quick add — input kotak 2px + tombol ink
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
@@ -108,14 +129,18 @@ Rectangle {
                 id: quickAddField
                 objectName: "quickAddField"
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.controlHeight
                 placeholderText: qsTr("Tulis Item — tanggal otomatis hari ini")
                 color: Theme.colorText
                 placeholderTextColor: Theme.colorMuted
+                padding: Theme.spacingMedium
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeBody
                 background: Rectangle {
-                    radius: Theme.radiusMedium
+                    radius: 0
                     color: Theme.colorSurface
-                    border.color: Theme.colorBorder
-                    border.width: 1
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
                 }
                 onAccepted: commitQuickAdd()
             }
@@ -123,10 +148,12 @@ Rectangle {
             PrimaryButton {
                 objectName: "quickAddButton"
                 text: qsTr("Tambah")
+                highlighted: true
                 onClicked: commitQuickAdd()
             }
         }
 
+        // Tabs board (mode per-board) — chip kotak
         Row {
             id: tabsBar
             visible: root.perBoardMode
@@ -135,25 +162,10 @@ Rectangle {
 
             Repeater {
                 model: root.tabsModel
-                Rectangle {
-                    width: tabLabel.width + Theme.spacingHuge
-                    height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
-                    color: root.selectedBoardId === modelData.id ? Theme.colorAccent : "transparent"
-
-                    Text {
-                        id: tabLabel
-                        anchors.centerIn: parent
-                        text: modelData.label
-                        font.pixelSize: Theme.fontSizeBody
-                        font.bold: root.selectedBoardId === modelData.id
-                        color: root.selectedBoardId === modelData.id ? Theme.colorAccentText : Theme.colorText
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.selectBoard(modelData.id)
-                    }
+                Chip {
+                    text: modelData.label
+                    active: root.selectedBoardId === modelData.id
+                    onClicked: root.selectBoard(modelData.id)
                 }
             }
         }
@@ -167,29 +179,29 @@ Rectangle {
             model: inboxModel
             section.property: "group"
             section.criteria: ViewSection.FullString
-            section.delegate: Rectangle {
+            section.delegate: SectionHeader {
                 width: listView.width
-                height: Theme.sectionHeight
-                color: "transparent"
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: section === "baru" ? qsTr("Baru") : section === "lama" ? qsTr("Lama") : qsTr("Dikembalikan")
-                    font.pixelSize: Theme.fontSizeBody
-                    font.bold: true
-                    color: Theme.colorMuted
-                }
+                text: section === "baru" ? qsTr("Baru") : section === "lama" ? qsTr("Lama") : qsTr("Dikembalikan")
             }
 
             delegate: Item {
                 width: listView.width
                 height: Theme.itemHeight
 
+                // Hard shadow slab
                 Rectangle {
                     anchors.fill: parent
-                    radius: Theme.radiusLarge
+                    anchors.leftMargin: Theme.shadowOffset
+                    anchors.topMargin: Theme.shadowOffset
+                    color: Theme.colorShadow
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 0
                     color: Theme.colorSurface
                     border.color: Theme.colorBorder
-                    border.width: 1
+                    border.width: Theme.borderWidth
                 }
 
                 ColumnLayout {
@@ -201,7 +213,9 @@ Rectangle {
                         Layout.fillWidth: true
                         text: title
                         elide: Text.ElideRight
+                        font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeLarge
+                        font.bold: true
                         color: Theme.colorText
                     }
 
@@ -211,6 +225,7 @@ Rectangle {
 
                         Text {
                             text: Format.dueDateString(dueDate)
+                            font.family: Theme.fontFamilyMono
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.colorMuted
                         }
@@ -220,6 +235,8 @@ Rectangle {
                         ComboBox {
                             id: moveBox
                             Layout.preferredWidth: 220
+                            Layout.preferredHeight: Theme.smallControlHeight
+                            font.family: Theme.fontFamilyBody
                             font.pixelSize: Theme.fontSizeSmall
                             displayText: currentIndex >= 0 ? currentText : qsTr("Pindah ke kolom…")
                             model: root.boardOptions
@@ -230,23 +247,25 @@ Rectangle {
                                 currentIndex = -1
                             }
                             background: Rectangle {
-                                radius: Theme.radiusMedium
+                                radius: 0
                                 color: Theme.colorSurfaceAlt
                                 border.color: Theme.colorBorder
-                                border.width: 1
+                                border.width: Theme.borderWidth
                             }
                             contentItem: Text {
                                 text: moveBox.displayText
                                 font: moveBox.font
                                 color: Theme.colorText
                                 verticalAlignment: Text.AlignVCenter
+                                leftPadding: Theme.spacingSmall
+                                rightPadding: Theme.spacingHuge
                                 elide: Text.ElideRight
                             }
                             indicator: Rectangle {
-                                x: moveBox.width - width - 10
+                                x: moveBox.width - width - 14
                                 y: moveBox.height / 2 - height / 2
-                                width: 10
-                                height: 6
+                                width: 8
+                                height: 2
                                 color: Theme.colorMuted
                             }
                         }
@@ -258,6 +277,7 @@ Rectangle {
                 anchors.centerIn: parent
                 visible: listView.count === 0
                 text: qsTr("Tidak ada Item di Inbox. Ketik di atas untuk menangkap Item.")
+                font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeMedium
                 color: Theme.colorMuted
             }

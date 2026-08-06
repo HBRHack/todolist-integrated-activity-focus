@@ -135,98 +135,87 @@ Rectangle {
         anchors.margins: Theme.spacingLarge
         spacing: Theme.spacingMedium
 
+        // Header + banner peringatan (danger slab)
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
 
             Text {
                 text: qsTr("Kalender")
+                font.family: Theme.fontFamilyDisplay
                 font.pixelSize: Theme.fontSizePageTitle
                 font.bold: true
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: Theme.letterSpacingDisplay
                 color: Theme.colorText
             }
 
             Item { Layout.fillWidth: true }
 
-            Text {
-                objectName: "noDateBanner"
+            Rectangle {
                 visible: root.noDateCount > 0
-                text: qsTr("Peringatan: %1 Item belum punya tanggal due — tidak tampil di Kalender.").arg(root.noDateCount)
-                font.pixelSize: Theme.fontSizeSmall
+                height: Theme.sectionHeight
                 color: Theme.colorDanger
-                verticalAlignment: Text.AlignVCenter
+                border.color: Theme.colorDanger
+                border.width: Theme.borderWidth
+
+                Text {
+                    objectName: "noDateBanner"
+                    anchors.fill: parent
+                    anchors.leftMargin: Theme.spacingMedium
+                    anchors.rightMargin: Theme.spacingMedium
+                    text: qsTr("Peringatan: %1 Item belum punya tanggal due — tidak tampil di Kalender.").arg(root.noDateCount)
+                    font.family: Theme.fontFamilyBody
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorDangerText
+                    verticalAlignment: Text.AlignVCenter
+                }
             }
         }
 
+        // Month nav — tombol kotak
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
 
-            Text {
-                text: "‹"
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                color: Theme.colorMuted
+            SquareToolButton {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.prevMonth()
-                }
+                text: "\u2039"
+                onClicked: root.prevMonth()
             }
 
             Text {
                 text: Format.monthName(root.viewMonth) + " " + root.viewYear
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
+                font.family: Theme.fontFamilyDisplay
                 font.pixelSize: Theme.fontSizeMedium
                 font.bold: true
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: Theme.letterSpacingDisplay
                 color: Theme.colorText
             }
 
-            Text {
-                text: "›"
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                color: Theme.colorMuted
+            SquareToolButton {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.nextMonth()
-                }
+                text: "\u203A"
+                onClicked: root.nextMonth()
             }
 
             Item { Layout.fillWidth: true }
 
-            Rectangle {
-                width: todayChip.width + Theme.spacingHuge
-                height: Theme.smallControlHeight
-                radius: Theme.radiusSmall
-                color: Theme.colorSurfaceAlt
-
-                Text {
-                    id: todayChip
-                    anchors.centerIn: parent
-                    text: qsTr("Hari ini")
-                    font.pixelSize: Theme.fontSizeBody
-                    font.bold: true
-                    color: Theme.colorAccent
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.goToday()
-                }
+            Chip {
+                text: qsTr("Hari ini")
+                active: true
+                onClicked: root.goToday()
             }
         }
 
+        // Week header — mono uppercase
         Row {
             id: weekHeaderRow
             Layout.fillWidth: true
@@ -243,14 +232,17 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: Qt.locale().dayName(modelData, Locale.ShortFormat)
+                        font.family: Theme.fontFamilyMono
                         font.pixelSize: Theme.fontSizeSmall
                         font.bold: true
+                        font.capitalization: Font.AllUppercase
                         color: Theme.colorMuted
                     }
                 }
             }
         }
 
+        // Grid — sel kotak 2px, today = ink fill
         Grid {
             id: calGrid
             objectName: "calGrid"
@@ -270,10 +262,13 @@ Rectangle {
 
                     width: (calGrid.width - 6 * calGrid.columnSpacing) / 7
                     height: (calGrid.height - (root.gridRowCount - 1) * calGrid.rowSpacing) / root.gridRowCount
-                    radius: Theme.radiusMedium
-                    color: cell.inMonth ? Theme.colorSurface : "transparent"
-                    border.color: cell.isToday ? Theme.colorAccent : (dropHighlight ? Theme.colorAccent : Theme.colorBorder)
-                    border.width: (cell.isToday || dropHighlight) ? 2 : 1
+                    radius: 0
+                    color: !cell.inMonth ? "transparent"
+                         : cell.isToday ? Theme.colorAccent
+                         : dropHighlight ? Theme.colorSurfaceAlt : Theme.colorSurface
+                    border.color: dropHighlight ? Theme.colorAccent
+                         : cell.isToday ? Theme.colorAccent : Theme.colorBorder
+                    border.width: dropHighlight ? 3 : Theme.borderWidth
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -283,24 +278,102 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             text: cell.d
+                            font.family: Theme.fontFamilyMono
                             font.pixelSize: Theme.fontSizeSmall
-                            font.bold: cell.isToday
-                            color: cell.inMonth ? (cell.isToday ? Theme.colorAccent : Theme.colorText) : Theme.colorMuted
+                            font.bold: true
+                            color: !cell.inMonth ? Theme.colorMuted
+                                 : cell.isToday ? Theme.colorAccentText : Theme.colorText
                         }
 
                         Repeater {
                             model: cell.items
 
-                            Rectangle {
-                                id: mcard
+                            Item {
+                                id: mcardRoot
                                 objectName: "calCard_" + mitem.itemId
                                 property var mitem: modelData
                                 Layout.fillWidth: true
                                 height: 18
-                                radius: Theme.radiusSmall
-                                color: Theme.colorSurfaceAlt
-                                border.color: Theme.colorBorder
-                                border.width: 1
+
+                                // Hard shadow DI BELAKANG kartu
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.rightMargin: Theme.shadowOffset
+                                    anchors.bottomMargin: Theme.shadowOffset
+                                    color: Theme.colorShadow
+                                    visible: !mArea.dragActive
+                                }
+
+                                // Kartu — surface (terang/dark ikut theme)
+                                Rectangle {
+                                    id: mcard
+                                    anchors.fill: parent
+                                    radius: 0
+                                    color: mArea.dragActive ? Theme.colorSurfaceAlt
+                                         : mArea.containsMouse ? Theme.colorSurfaceAlt : Theme.colorSurface
+                                    border.color: Theme.colorBorder
+                                    border.width: Theme.borderWidth
+
+                                    // Accent bar kiri — kontras jelas vs surface
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        width: 3
+                                        color: Theme.colorAccent
+                                    }
+
+                                    Text {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 7
+                                        anchors.rightMargin: 4
+                                        text: mitem.title
+                                        elide: Text.ElideRight
+                                        font.family: Theme.fontFamilyBody
+                                        font.pixelSize: Theme.fontSizeCaption
+                                        color: Theme.colorText
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    MouseArea {
+                                        id: mArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        property bool dragActive: false
+                                        property point pressPos: Qt.point(0, 0)
+
+                                        onPressed: (mouse) => {
+                                            mArea.dragActive = false
+                                            pressPos = Qt.point(mouse.x, mouse.y)
+                                            root.dragState = { itemId: mitem.itemId, title: mitem.title }
+                                        }
+                                        onPositionChanged: (mouse) => {
+                                            if (mArea.dragActive) {
+                                                root.ghostMove(mcard.mapToItem(root, mouse.x, mouse.y))
+                                                return
+                                            }
+                                            if (!pressed)
+                                                return
+                                            var dx = mouse.x - pressPos.x
+                                            var dy = mouse.y - pressPos.y
+                                            if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
+                                                return
+                                            mArea.dragActive = true
+                                            root.ghostShow(mitem.title)
+                                        }
+                                        onReleased: {
+                                            if (mArea.dragActive) {
+                                                mcard.Drag.drop()
+                                                root.ghostHide()
+                                            }
+                                        }
+                                        onClicked: {
+                                            if (!mArea.dragActive)
+                                                root.openDetail(mitem.itemId)
+                                            mArea.dragActive = false
+                                        }
+                                    }
+                                }
 
                                 Drag.active: mArea.dragActive
                                 Drag.source: mcard
@@ -309,55 +382,6 @@ Rectangle {
                                 Drag.hotSpot.y: mcard.height / 2
 
                                 opacity: mArea.dragActive ? 0.4 : 1.0
-
-                                Text {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 4
-                                    anchors.rightMargin: 4
-                                    text: mitem.title
-                                    elide: Text.ElideRight
-                                    font.pixelSize: Theme.fontSizeCaption
-                                    color: Theme.colorText
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                                MouseArea {
-                                    id: mArea
-                                    anchors.fill: parent
-                                    property bool dragActive: false
-                                    property point pressPos: Qt.point(0, 0)
-
-                                    onPressed: (mouse) => {
-                                        mArea.dragActive = false
-                                        pressPos = Qt.point(mouse.x, mouse.y)
-                                        root.dragState = { itemId: mitem.itemId, title: mitem.title }
-                                    }
-                                    onPositionChanged: (mouse) => {
-                                        if (mArea.dragActive) {
-                                            root.ghostMove(mcard.mapToItem(root, mouse.x, mouse.y))
-                                            return
-                                        }
-                                        if (!pressed)
-                                            return
-                                        var dx = mouse.x - pressPos.x
-                                        var dy = mouse.y - pressPos.y
-                                        if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
-                                            return
-                                        mArea.dragActive = true
-                                        root.ghostShow(mitem.title)
-                                    }
-                                    onReleased: {
-                                        if (mArea.dragActive) {
-                                            mcard.Drag.drop()
-                                            root.ghostHide()
-                                        }
-                                    }
-                                    onClicked: {
-                                        if (!mArea.dragActive)
-                                            root.openDetail(mitem.itemId)
-                                        mArea.dragActive = false
-                                    }
-                                }
                             }
                         }
 
@@ -388,17 +412,30 @@ Rectangle {
         z: 100
         width: Theme.columnWidth - Theme.spacingLarge
         height: 20
-        radius: Theme.radiusMedium
-        color: Theme.colorSurfaceAlt
-        border.color: Theme.colorAccent
-        border.width: 2
-        opacity: 0.9
+        radius: 0
+        color: Theme.colorSurface
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.leftMargin: Theme.shadowOffset
+            anchors.topMargin: Theme.shadowOffset
+            color: Theme.colorShadow
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorAccent
+            border.width: Theme.borderWidth
+        }
 
         Text {
             id: dragGhostTitle
             anchors.fill: parent
             anchors.margins: Theme.spacingSmall
             elide: Text.ElideRight
+            font.family: Theme.fontFamilyBody
             font.pixelSize: Theme.fontSizeSmall
             font.bold: true
             color: Theme.colorText

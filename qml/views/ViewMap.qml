@@ -178,14 +178,18 @@ Rectangle {
         anchors.margins: Theme.spacingLarge
         spacing: Theme.spacingMedium
 
+        // Toolbar — slab kontrol kotak
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
 
             Text {
                 text: qsTr("Peta")
+                font.family: Theme.fontFamilyDisplay
                 font.pixelSize: Theme.fontSizePageTitle
                 font.bold: true
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: Theme.letterSpacingDisplay
                 color: Theme.colorText
             }
 
@@ -193,6 +197,7 @@ Rectangle {
 
             Text {
                 text: qsTr("Gulir roda untuk zoom · seret area kosong untuk geser")
+                font.family: Theme.fontFamilyMono
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.colorMuted
                 verticalAlignment: Text.AlignVCenter
@@ -210,16 +215,17 @@ Rectangle {
                 objectName: "mapModeDropdown"
                 width: 200
                 height: Theme.smallControlHeight
+                font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeSmall
                 model: [qsTr("Satu Papan Global"), qsTr("Multiple Papan")]
                 currentIndex: appSettings.mapMode === "perboard" ? 1 : 0
                 onActivated: root.setMapMode(index === 0 ? "global" : "perboard")
 
                 background: Rectangle {
-                    radius: Theme.radiusMedium
-                    color: Theme.colorSurfaceAlt
-                    border.color: Theme.colorBorder
-                    border.width: 1
+                    radius: 0
+                    color: Theme.colorSurface
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
                 }
 
                 contentItem: Text {
@@ -233,64 +239,39 @@ Rectangle {
                 }
 
                 indicator: Rectangle {
-                    x: mapModeDropdown.width - width - 10
+                    x: mapModeDropdown.width - width - 14
                     y: mapModeDropdown.height / 2 - height / 2
-                    width: 10
-                    height: 6
+                    width: 8
+                    height: 2
                     color: Theme.colorMuted
                 }
             }
 
-            Rectangle {
-                width: zoomOutBtn.width + Theme.spacingHuge
-                height: Theme.smallControlHeight
-                radius: Theme.radiusSmall
-                color: Theme.colorSurfaceAlt
-
-                Text {
-                    id: zoomOutBtn
-                    anchors.centerIn: parent
-                    text: "−"
-                    font.pixelSize: Theme.fontSizeTitle
-                    font.bold: true
-                    color: Theme.colorAccent
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.zoom = root.clampZoom(root.zoom * 0.85)
-                }
+            SquareToolButton {
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u2212"
+                onClicked: root.zoom = root.clampZoom(root.zoom * 0.85)
             }
 
-            Rectangle {
-                width: zoomInBtn.width + Theme.spacingHuge
-                height: Theme.smallControlHeight
-                radius: Theme.radiusSmall
-                color: Theme.colorSurfaceAlt
-
-                Text {
-                    id: zoomInBtn
-                    anchors.centerIn: parent
-                    text: "+"
-                    font.pixelSize: Theme.fontSizeTitle
-                    font.bold: true
-                    color: Theme.colorAccent
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.zoom = root.clampZoom(root.zoom * 1.15)
-                }
+            SquareToolButton {
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "+"
+                onClicked: root.zoom = root.clampZoom(root.zoom * 1.15)
             }
 
             Text {
                 text: Math.round(root.zoom * 100) + "%"
+                font.family: Theme.fontFamilyMono
                 font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
                 color: Theme.colorMuted
                 verticalAlignment: Text.AlignVCenter
             }
         }
 
+        // Chips board — kotak
         Row {
             id: chipsBar
             Layout.fillWidth: true
@@ -299,31 +280,17 @@ Rectangle {
             Repeater {
                 model: root.chipsModel
 
-                Rectangle {
+                Chip {
                     id: chip
                     objectName: "boardChip_" + modelData.id
-                    width: chipLabel.width + Theme.spacingHuge
-                    height: Theme.smallControlHeight
-                    radius: Theme.radiusSmall
-                    color: root.selectedBoardId === modelData.id ? Theme.colorAccent : Theme.colorSurfaceAlt
-
-                    Text {
-                        id: chipLabel
-                        anchors.centerIn: parent
-                        text: modelData.label
-                        font.pixelSize: Theme.fontSizeBody
-                        font.bold: root.selectedBoardId === modelData.id
-                        color: root.selectedBoardId === modelData.id ? Theme.colorAccentText : Theme.colorText
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.selectBoard(modelData.id)
-                    }
+                    text: modelData.label
+                    active: root.selectedBoardId === modelData.id
+                    onClicked: root.selectBoard(modelData.id)
                 }
             }
         }
 
+        // Canvas peta
         Flickable {
             id: canvas
             objectName: "mapCanvas"
@@ -357,7 +324,7 @@ Rectangle {
                     anchors.fill: parent
                     color: "transparent"
                     border.color: Theme.colorBorder
-                    border.width: 1
+                    border.width: Theme.borderWidth
                 }
 
                 Repeater {
@@ -392,7 +359,7 @@ Rectangle {
                             y: edgeRoot.cy - 1.5
                             rotation: Math.atan2(edgeRoot.dy, edgeRoot.dx) * 180 / Math.PI
                             transformOrigin: Item.TopLeft
-                            color: Theme.colorBorder
+                            color: Theme.colorText
 
                             MouseArea {
                                 anchors.fill: parent
@@ -418,12 +385,21 @@ Rectangle {
                         y: root.nodePosition(itemId).y
                         z: nodeMouse.dragActive || nodeMouse.edgeDrag ? 10 : 1
 
+                        // Hard shadow slab
                         Rectangle {
                             anchors.fill: parent
-                            radius: Theme.radiusLarge
+                            anchors.leftMargin: Theme.shadowOffset
+                            anchors.topMargin: Theme.shadowOffset
+                            color: Theme.colorShadow
+                            visible: !nodeMouse.dragActive
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 0
                             color: Theme.colorSurface
                             border.color: nodeMouse.dragActive || nodeMouse.edgeDrag || root.edgeTargetId === itemId ? Theme.colorAccent : Theme.colorBorder
-                            border.width: nodeMouse.dragActive || nodeMouse.edgeDrag || root.edgeTargetId === itemId ? 2 : 1
+                            border.width: nodeMouse.dragActive || nodeMouse.edgeDrag || root.edgeTargetId === itemId ? 3 : Theme.borderWidth
                         }
 
                         ColumnLayout {
@@ -435,6 +411,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 text: title
                                 elide: Text.ElideRight
+                                font.family: Theme.fontFamilyBody
                                 font.pixelSize: Theme.fontSizeBody
                                 font.bold: true
                                 color: Theme.colorText
@@ -446,6 +423,7 @@ Rectangle {
 
                                 Text {
                                     text: Format.dueDateString(dueDate)
+                                    font.family: Theme.fontFamilyMono
                                     font.pixelSize: Theme.fontSizeCaption
                                     color: Theme.colorMuted
                                 }
@@ -456,7 +434,9 @@ Rectangle {
                                     visible: boardName.length > 0
                                     text: boardName
                                     elide: Text.ElideRight
+                                    font.family: Theme.fontFamilyMono
                                     font.pixelSize: Theme.fontSizeCaption
+                                    font.bold: true
                                     color: Theme.colorAccent
                                 }
                             }
@@ -552,6 +532,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: mapProxy.count === 0
                     text: qsTr("Belum ada Item di peta. Tambahkan Item dari Inbox atau view lain.")
+                    font.family: Theme.fontFamilyBody
                     font.pixelSize: Theme.fontSizeMedium
                     color: Theme.colorMuted
                 }
@@ -582,10 +563,10 @@ Rectangle {
         padding: 0
 
         background: Rectangle {
-            radius: Theme.radiusLarge
+            radius: 0
             color: Theme.colorSurface
             border.color: Theme.colorBorder
-            border.width: 1
+            border.width: Theme.borderWidth
         }
 
         ColumnLayout {
@@ -596,8 +577,10 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: qsTr("Hapus koneksi")
+                font.family: Theme.fontFamilyDisplay
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
+                font.capitalization: Font.AllUppercase
                 color: Theme.colorText
             }
 
@@ -605,6 +588,7 @@ Rectangle {
                 id: edgePopupInfo
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
+                font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.colorMuted
             }
