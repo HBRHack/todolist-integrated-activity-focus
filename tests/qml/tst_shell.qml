@@ -94,6 +94,21 @@ TestCase {
         comp.destroy()
     }
 
+    function test_appVersionExposed() {
+        verify(typeof appVersion !== "undefined" && appVersion !== "",
+               "appVersion tidak terbaca dari QML")
+        var comp = Qt.createComponent("../../qml/views/ViewSettings.qml")
+        verify(comp.status === Component.Ready, comp.errorString())
+        var view = comp.createObject(t)
+        verify(view !== null, "ViewSettings create failed")
+        var label = findChild(view, "appVersionLabel")
+        verify(label !== null, "label versi tidak ditemukan")
+        verify(label.text.indexOf(appVersion) !== -1,
+               "label versi tidak menampilkan " + appVersion)
+        view.destroy()
+        comp.destroy()
+    }
+
     function isoLocal(offsetDays) {
         var now = new Date()
         var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays)

@@ -51,8 +51,8 @@ whenever the `.pro` changes.
 ## Tests
 
 - Backend (QtTest): **29/29 PASS**
-- QML (QtQuickTest, offscreen): **48/48 PASS** (board CRUD 5, calendar 7,
-  kanban drag 7, list 4, map 12, settings 3, setup dialog 4, shell 6)
+- QML (QtQuickTest, offscreen): **49/49 PASS** (board CRUD 5, calendar 7,
+  kanban drag 7, list 4, map 12, settings 3, setup dialog 4, shell 7)
 
 ```bash
 # backend

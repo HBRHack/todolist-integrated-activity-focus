@@ -16,6 +16,10 @@
 #include "listproxymodel.h"
 #include "mapproxymodel.h"
 
+#ifndef APP_VERSION
+#define APP_VERSION "0.0.0"
+#endif
+
 static bool loadTranslation(QTranslator *translator, const QString &lang)
 {
     if (!lang.isEmpty() && lang != QStringLiteral("auto")) {
@@ -84,6 +88,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("repo"), &repo);
     engine.rootContext()->setContextProperty(QStringLiteral("itemModel"), &itemModel);
     engine.rootContext()->setContextProperty(QStringLiteral("inboxModel"), &inboxModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("appVersion"),
+                                              QStringLiteral(APP_VERSION));
 
     QTranslator *translator = new QTranslator(&app);
     app.installTranslator(translator);

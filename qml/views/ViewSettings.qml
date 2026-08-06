@@ -126,5 +126,12 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
+
+        Text {
+            objectName: "appVersionLabel"
+            text: qsTr("Versi %1").arg(typeof appVersion !== "undefined" ? appVersion : "")
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.colorMuted
+        }
     }
 }

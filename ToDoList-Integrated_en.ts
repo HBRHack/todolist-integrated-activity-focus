@@ -241,6 +241,10 @@
         <source>Auto (Sistem)</source>
         <translation>Auto (System)</translation>
     </message>
+    <message>
+        <source>Versi %1</source>
+        <translation>Version %1</translation>
+    </message>
 </context>
 <context>
     <name>main</name>

@@ -9,6 +9,10 @@ lessThan(QT_VERSION, 5.15): error("This project requires Qt 5.15 or newer (PRD.m
 TEMPLATE = app
 TARGET = ToDoList-Integrated
 
+# Version — sumber tunggal untuk tag rilis (semver; lihat README "Release process")
+VERSION = 1.1.0
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050f00    # disables all the APIs deprecated before Qt 5.15.0

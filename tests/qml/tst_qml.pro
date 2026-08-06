@@ -5,6 +5,10 @@ TEMPLATE = app
 TARGET = tst_qml
 DESTDIR = $$OUT_PWD
 
+# Sinkronkan manual dengan VERSION di ToDoList-Integrated.pro
+VERSION = 1.1.0
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+
 QUICK_TEST_SOURCE_DIR = $$PWD
 
 INCLUDEPATH += ../../src

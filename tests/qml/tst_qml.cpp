@@ -57,6 +57,8 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("repo"), &m_repo);
         engine->rootContext()->setContextProperty(QStringLiteral("itemModel"), m_itemModel);
         engine->rootContext()->setContextProperty(QStringLiteral("inboxModel"), m_inboxModel);
+        engine->rootContext()->setContextProperty(QStringLiteral("appVersion"),
+                                                  QStringLiteral(APP_VERSION));
     }
 
 private:
