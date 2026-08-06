@@ -1,0 +1,36 @@
+NOTICE — Third-Party License Compliance
+Qt Framework (LGPLv3)
+This application uses the Qt framework, licensed under theGNU Lesser General Public License version 3 (LGPLv3).
+
+    Qt is © The Qt Company Ltd. and other contributors.
+Full LGPLv3 text: https://www.gnu.org/licenses/lgpl-3.0.html
+Qt LGPL info: [https://doc.qt.io/qt-5/lgpl.html](https://doc.qt.io/qt-5/lgpl.html)
+
+    Compliance notes for this project
+Linking method: Dynamic linking (recommended by Qt for LGPLv3
+compliance — allows end users to replace the Qt libraries with a
+compatible modified version without recompiling this application).
+
+Source availability:
+This application's own source code is
+available under [MIT License by app author] in this repository.
+It is a "work that uses" the Qt library and is not itself required
+to be LGPL/GPL licensed.
+
+Qt library source: 
+
+Unmodified Qt libraries are used. Source is
+publicly available from the Qt Project at https://download.qt.io
+and https://code.qt.io — no local modifications were made.
+Re-linking: Because Qt is dynamically linked, end users may
+replace the bundled Qt shared libraries (.dll on Windows, .so on
+Linux) with a compatible version of their choosing.
+
+Required texts
+See LICENSE-LGPLv3.txt (bundled alongside this NOTICE) for the
+full LGPLv3 license text, and LICENSE-GPLv3.txt for the GPLv3 text
+(required alongside LGPLv3 per Qt's licensing terms).
+This file should be shipped with the compiled application (e.g. in
+an "About" dialog or a docs/ folder in releases) — not just kept in
+the source repo — to satisfy the "prominent notice" requirement.
+
