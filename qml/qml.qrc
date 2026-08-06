@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>main.qml</file>
+        <file>theme/Theme.qml</file>
+        <file>theme/qmldir</file>
+        <file>components/PrimaryButton.qml</file>
+        <file>components/ItemDetailPopup.qml</file>
+        <file>components/Format.js</file>
+        <file>components/qmldir</file>
+        <file>views/ViewInbox.qml</file>
+        <file>views/ViewList.qml</file>
+        <file>views/ViewKanban.qml</file>
+        <file>views/ViewCalendar.qml</file>
+        <file>views/ViewMap.qml</file>
+        <file>views/ViewSettings.qml</file>
+    </qresource>
+</RCC>
