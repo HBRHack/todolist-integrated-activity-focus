@@ -8,12 +8,12 @@ User (individu/tim kecil) butuh task manager ringan & offline-first. Aplikasi po
 
 ## Solution
 
-Aplikasi native Qt/QML, **satu sumber data SQLite**, **satu entitas Item** yang dilihat dari **5 view yang sinkron by design**: **Inbox** (layar awal, berisi Item belum dipetakan, dikelompokkan *baru · lama · belum pernah dipetakan*), **List**, **Kanban** (kolom custom penuh per board), **Kalender** (ganti tanggal via drag), dan **Mind-Map** (node = Item, koneksi parent–child, posisi tersimpan, filter per board, tombol "Susun rapi"). **Quick-add** memahami tanggal Bahasa Indonesia ("beli susu besok", "rapat senin jam 9"). Setting membolehkan memilih mode Inbox **Global** atau **Per-Board**, dan mode Peta **satu papan global** atau **beberapa papan per board**.
+Aplikasi native Qt/QML, **satu sumber data SQLite**, **satu entitas Item** yang dilihat dari **5 view yang sinkron by design**: **Inbox** (layar awal, berisi Item belum dipetakan, tampil sebagai **tabel** — index mono, kegiatan, tanggal, status, pemetaan, aksi — dikelompokkan *baru · lama · dikembalikan*), **List**, **Kanban** (kolom custom penuh per board), **Kalender** (ganti tanggal via drag), dan **Mind-Map** (node = Item, koneksi parent–child, posisi tersimpan, filter per board, tombol "Susun rapi"). Item ditangkap lewat dialog **Tambah Data** dengan **NLP dual-bahasa (Indonesia + Inggris)** ("beli susu besok", "rapat senin jam 9", "meeting tomorrow at 9 am" — tanggal/jam diurai otomatis, ada preview live). Setting membolehkan memilih mode Inbox **Global** atau **Per-Board**, dan mode Peta **satu papan global** atau **beberapa papan per board**.
 
 ## User Stories
 
 1. Sebagai user, saya ingin menangkap ide sebagai teks bebas dengan cepat, agar ide tidak hilang sebelum punya struktur.
-2. Sebagai user, saya ingin quick-add memahami frasa tanggal Bahasa Indonesia, agar mengetik "beli susu besok" langsung mengisi tanggal due.
+2. Sebagai user, saya ingin menangkap dengan NLP berbahasa Indonesia (mis. "beli susu besok", "rapat senin jam 9"), sehingga kegiatan sekaligus tanggal/jamnya langsung terisi tanpa mengisi form terpisah.
 3. Sebagai user, saya ingin setiap Item selalu memiliki tanggal due yang valid secara otomatis, agar saya tidak pernah terblokir dan Kalender selalu lengkap.
 4. Sebagai user, saya ingin memperbaiki tanggal yang salah ditebak parser, agar tebakan keliru tidak mengunci saya.
 5. Sebagai user, saya ingin Inbox menjadi layar pertama saat aplikasi dibuka, agar saya mendarat di tempat ide mentah saya berada.
@@ -32,6 +32,8 @@ Aplikasi native Qt/QML, **satu sumber data SQLite**, **satu entitas Item** yang 
 18. Sebagai user, saya ingin tombol "Susun rapi" untuk auto-layout, agar peta bisa dirapikan tanpa nata manual.
 19. Sebagai user, saya ingin memfilter peta per board (saat Mode Peta Global), agar peta besar tetap mudah dicerna.
 26. Sebagai user, saya ingin menentukan Mode Peta (satu papan global atau beberapa papan per Board/Idea) lewat dialog Setup Awal saat membuat Board/Idea baru, dan bisa menggantinya lewat dropdown di area Peta, agar cara kerja peta bisa disesuaikan dengan kebutuhan klien.
+27. Sebagai user, saya ingin isi Inbox tampil sebagai tabel (No · Kegiatan · Tanggal · Status · petakan), agar memindai konten/log terasa lebih jelas daripada tumpukan kartu.
+28. Sebagai user, saya ingin menambah kegiatan lewat tombol "Tambah Data" yang membuka form (kegiatan wajib, tanggal opsional default hari ini, deskripsi opsional) dengan dukungan NLP, dan hasilnya langsung masuk tabel Inbox.
 20. Sebagai user, saya ingin membuka detail Item dari view mana pun, agar lompat dari peta ke detail terasa mulus.
 21. Sebagai user, saya ingin menu Settings untuk memilih mode Inbox (Global atau Per-Board), agar gaya kerja bisa dipilih.
 22. Sebagai user, saya ingin mengganti tema (Light/Dark + 1 aksen), agar aplikasi cocok dengan selera saya.
@@ -51,7 +53,8 @@ Aplikasi native Qt/QML, **satu sumber data SQLite**, **satu entitas Item** yang 
 - **Struktur folder**: `src/` untuk C++ (Database, model, service), `qml/` untuk view (Inbox, List, Kanban, Kalender, Peta, komponen), `tests/` untuk unit test & integration test.
 - **Struktur pengujian**: dua seam — unit test backend headless + integration test QML (ADR-0006).
 - **Inbox grouping**: item memiliki `last_mapped_at` (nullable, terisi saat pertama kali dipetakan). Grouping = *baru* (dibuat ≤ 7 hari) · *lama* (dibuat > 7 hari) · *dikembalikan* (pernah dipetakan, kini di Inbox) (ADR-0007).
-- **Grammar quick-add (MVP)**: *hari ini / besok / lusa*; nama hari *senin–minggu* (+ "depan"/"lalu"); *"jam X" / "pukul X"*; relatif angka *"X hari/minggu/bulan/tahun lagi"*; *minggu/bulan/tahun depan*; *"nanti"*. Teks tanpa tanggal yang terbaca → default hari ini (ADR-0003).
+- **Inbox tampil tabel + dialog Tambah Data (isu 16)**: Inbox memakai ritme table-led — header kolom uppercase, baris hairline, index mono, status mono, SelectBox "Petakan" per baris, plus kolom **Aksi** (✎ edit → `ItemDetailPopup`, ✕ hapus dengan konfirmasi) — menggantikan kartu slab; quick-add TextField dihapus dari view. Item ditangkap via tombol "Tambah Data" yang membuka `Popup` modal dengan field Kegiatan (wajib + NLP), Tanggal (opsional, default hari ini), Deskripsi (opsional). Repository menyediakan `parseNlp(text)` (preview tanpa side effect) dan `addItemNlp(text, description, dueOverride)` (gabungan NLP date/time + override manual); `repo.quickAdd` tetap ada untuk view lain & test.
+- **Grammar NLP (Indonesia + English)**: ID — *hari ini / besok / lusa*, nama hari *senin–minggu* (+ "depan"/"lalu"), *"jam X" / "pukul X"*, *"X hari/minggu/bulan/tahun lagi"*, *minggu/bulan/tahun depan*, *"nanti"*. EN — *today / tomorrow*, *monday..sunday* (+ `next`/`last`), *in X days/weeks*, *X days (ago | from now)*, *next week / last week*, *at 9 am / 5 pm / 17:30*. Teks tanpa tanggal yang terbaca → default hari ini (ADR-0003).
 - **Waktu**: parser yang menangkap jam ("besok jam 9") mengisi `due_time` (nullable); Kalender tetap date-only.
 - **Penghapusan**: hapus kolom → item kembali ke Inbox; hapus board → semua itemnya kembali ke Inbox (data tidak terhapus) (ADR-0008).
 - **Seed awal**: run pertama membuat 1 board default "Umum" + 3 kolom bawaan (To Do / In Progress / Done).

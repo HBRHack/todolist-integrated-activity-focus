@@ -113,41 +113,17 @@ Popup {
             }
         }
 
-        ComboBox {
+        SelectBox {
             id: detailMoveBox
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.controlHeight
-            font.family: Theme.fontFamilyBody
-            font.pixelSize: Theme.fontSizeSmall
+            placeholderText: qsTr("Pindah ke kolom…")
             model: root.boardOptions
             textRole: "label"
-            displayText: currentIndex >= 0 ? currentText : qsTr("Pindah ke kolom…")
             onActivated: {
                 if (index >= 0)
                     root.moveToColumn(root.boardOptions[index].columnId)
                 currentIndex = -1
-            }
-            background: Rectangle {
-                radius: 0
-                color: Theme.colorSurfaceAlt
-                border.color: Theme.colorBorder
-                border.width: Theme.borderWidth
-            }
-            contentItem: Text {
-                text: detailMoveBox.displayText
-                font: detailMoveBox.font
-                color: Theme.colorText
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: Theme.spacingSmall
-                rightPadding: Theme.spacingHuge
-                elide: Text.ElideRight
-            }
-            indicator: Rectangle {
-                x: detailMoveBox.width - width - 14
-                y: detailMoveBox.height / 2 - height / 2
-                width: 8
-                height: 2
-                color: Theme.colorMuted
             }
         }
 

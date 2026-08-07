@@ -2,8 +2,8 @@
 
 Aplikasi desktop pengelola ide/to-do terintegrasi: satu model data bersama,
 lima tampilan (view) yang tersinkron. Item cukup dimasukkan sekali — lewat
-kotak quick-add berbahasa alami — lalu terlihat di mana-mana: Inbox, List,
-Kanban, Kalender, dan tampilan Peta (mind-map).
+dialog berbahasa alami di Inbox (log berbentuk tabel + tombol **Tambah Data**)
+— lalu terlihat di mana-mana: Inbox, List, Kanban, Kalender, dan Peta (mind-map).
 
 > **English?** Read [`README.md`](README.md).
 
@@ -13,9 +13,10 @@ Kanban, Kalender, dan tampilan Peta (mind-map).
   Setiap item: judul, deskripsi, tanggal due, urutan, (opsional) board + kolom.
 - **Lima tampilan tersinkron** di atas satu model bersama (ADR-0005):
   Inbox, List, Kanban, Kalender, Peta (mind-map).
-- **Quick-add berbahasa alami** — "besok jam 9", "senin depan", "3 hari lagi"
-  di-parse menjadi tanggal due (parser C++, ADR-0003). Teks tanpa tanggal
-  terbaca → default hari ini.
+- **Tambah Data berbahasa alami (ID + EN)** — "besok jam 9", "senin depan",
+  "3 hari lagi", "meeting tomorrow at 9 am", "in 3 days" di-parse menjadi
+  tanggal due (parser C++, ADR-0003, dua bahasa). Teks tanpa tanggal terbaca
+  → default hari ini.
 - **Kanban drag & drop** — pindahkan item antar kolom dan urutkan ulang dalam
   kolom; sel kalender menerima drop untuk mengubah tanggal due.
 - **i18n** — Bahasa Indonesia (bahasa sumber, default) dan Inggris; dipilih

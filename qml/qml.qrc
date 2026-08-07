@@ -9,6 +9,8 @@
         <file>components/NavItem.qml</file>
         <file>components/SquareToolButton.qml</file>
         <file>components/ItemDetailPopup.qml</file>
+        <file>components/BrutalScrollBar.qml</file>
+        <file>components/SelectBox.qml</file>
         <file>components/Format.js</file>
         <file>components/qmldir</file>
         <file>views/ViewInbox.qml</file>

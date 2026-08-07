@@ -155,8 +155,8 @@ Rectangle {
             Rectangle {
                 visible: root.noDateCount > 0
                 height: Theme.sectionHeight
-                color: Theme.colorDanger
-                border.color: Theme.colorDanger
+                color: Theme.colorDangerFill
+                border.color: Theme.colorDangerFill
                 border.width: Theme.borderWidth
 
                 Text {

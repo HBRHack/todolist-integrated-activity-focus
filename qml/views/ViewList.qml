@@ -98,37 +98,13 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
 
-            ComboBox {
+            SelectBox {
                 id: sortModeBox
                 objectName: "sortModeBox"
                 Layout.preferredWidth: 200
                 Layout.preferredHeight: Theme.smallControlHeight
-                font.family: Theme.fontFamilyBody
-                font.pixelSize: Theme.fontSizeSmall
                 model: [qsTr("Tanggal"), qsTr("Status")]
                 onActivated: listProxy.sortMode = currentIndex === 0 ? "tanggal" : "status"
-                background: Rectangle {
-                    radius: 0
-                    color: Theme.colorSurface
-                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
-                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
-                }
-                contentItem: Text {
-                    text: sortModeBox.displayText
-                    font: sortModeBox.font
-                    color: Theme.colorText
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: Theme.spacingSmall
-                    rightPadding: Theme.spacingHuge
-                    elide: Text.ElideRight
-                }
-                indicator: Rectangle {
-                    x: sortModeBox.width - width - 14
-                    y: sortModeBox.height / 2 - height / 2
-                    width: 8
-                    height: 2
-                    color: Theme.colorMuted
-                }
             }
         }
 
@@ -160,6 +136,7 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             spacing: 0
+            ScrollBar.vertical: BrutalScrollBar {}
             model: ListProxyModel {
                 id: listProxy
                 objectName: "listProxy"
@@ -222,7 +199,7 @@ Rectangle {
                         font.family: Theme.fontFamilyMono
                         font.pixelSize: Theme.fontSizeSmall
                         font.bold: columnId !== -1
-                        color: columnId === -1 ? Theme.colorMuted : Theme.colorAccent
+                        color: columnId === -1 ? Theme.colorMuted : Theme.colorAccentContent
                         verticalAlignment: Text.AlignVCenter
                     }
                 }

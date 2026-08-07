@@ -40,7 +40,7 @@ Rectangle {
             font.family: Theme.fontFamilyMono
             font.pixelSize: Theme.fontSizeSmall
             font.bold: true
-            color: root.active ? Theme.colorAccent : Theme.colorMuted
+            color: root.active ? Theme.colorBackground : Theme.colorMuted
         }
 
         Text {

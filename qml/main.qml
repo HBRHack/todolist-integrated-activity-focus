@@ -77,7 +77,7 @@ ApplicationWindow {
                                 text: qsTr("Versi %1").arg(typeof appVersion !== "undefined" ? appVersion : "")
                                 font.family: Theme.fontFamilyMono
                                 font.pixelSize: Theme.fontSizeCaption
-                                color: Theme.colorMuted
+                                color: Theme.colorRailMuted
                             }
                         }
                     }

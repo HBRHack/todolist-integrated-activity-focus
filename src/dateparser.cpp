@@ -21,10 +21,13 @@ QList<DateParser::Token> DateParser::tokenize(const QString &text)
 bool DateParser::isDayName(const QString &word, int &dayOfWeek)
 {
     static const QMap<QString, int> days = {
-        {QStringLiteral("senin"), 1}, {QStringLiteral("selasa"), 2},
-        {QStringLiteral("rabu"), 3}, {QStringLiteral("kamis"), 4},
-        {QStringLiteral("jumat"), 5}, {QStringLiteral("sabtu"), 6},
-        {QStringLiteral("minggu"), 0}
+        {QStringLiteral("senin"), 1}, {QStringLiteral("monday"), 1},
+        {QStringLiteral("selasa"), 2}, {QStringLiteral("tuesday"), 2},
+        {QStringLiteral("rabu"), 3}, {QStringLiteral("wednesday"), 3},
+        {QStringLiteral("kamis"), 4}, {QStringLiteral("thursday"), 4},
+        {QStringLiteral("jumat"), 5}, {QStringLiteral("friday"), 5},
+        {QStringLiteral("sabtu"), 6}, {QStringLiteral("saturday"), 6},
+        {QStringLiteral("minggu"), 0}, {QStringLiteral("sunday"), 0}
     };
     auto it = days.find(word);
     if (it == days.end())
@@ -36,7 +39,8 @@ bool DateParser::isDayName(const QString &word, int &dayOfWeek)
 bool DateParser::isRelativeDay(const QString &word, int &daysAhead)
 {
     static const QMap<QString, int> relDays = {
-        {QStringLiteral("besok"), 1}, {QStringLiteral("lusa"), 2}
+        {QStringLiteral("besok"), 1}, {QStringLiteral("lusa"), 2},
+        {QStringLiteral("tomorrow"), 1}
     };
     auto it = relDays.find(word);
     if (it == relDays.end())
@@ -48,9 +52,15 @@ bool DateParser::isRelativeDay(const QString &word, int &daysAhead)
 QTime DateParser::extractTime(const QString &text, QList<int> &consumed)
 {
     static const QRegularExpression timeRe(
-        QStringLiteral("(?:jam|pukul)\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(pagi|siang|sore|malam)?"),
+        QStringLiteral("(?:jam|pukul|at)\\s+(\\d{1,2})(?::(\\d{2}))?\\s*"
+                       "(pagi|siang|sore|malam|am|pm)?"),
+        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression ampmRe(
+        QStringLiteral("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b"),
         QRegularExpression::CaseInsensitiveOption);
     QRegularExpressionMatch m = timeRe.match(text);
+    if (!m.hasMatch())
+        m = ampmRe.match(text);
     if (!m.hasMatch())
         return QTime();
 
@@ -58,7 +68,14 @@ QTime DateParser::extractTime(const QString &text, QList<int> &consumed)
     int minute = m.captured(2).isEmpty() ? 0 : m.captured(2).toInt();
     QString period = m.captured(3).toLower();
 
-    if (period == QStringLiteral("sore") || period == QStringLiteral("malam")) {
+    if (period == QStringLiteral("pagi") || period == QStringLiteral("am")) {
+        if (hour == 12)
+            hour = 0;
+    } else if (period == QStringLiteral("siang")) {
+        if (hour < 12)
+            hour += 12;
+    } else if (period == QStringLiteral("sore") || period == QStringLiteral("malam")
+               || period == QStringLiteral("pm")) {
         if (hour < 12)
             hour += 12;
     } else if (period.isEmpty() && hour >= 1 && hour <= 6) {
@@ -114,7 +131,22 @@ QDate DateParser::extractDate(const QList<Token> &tokens, QDate baseDate, QList<
         };
         auto isUnitWord = [](const QString &w) {
             return w == QStringLiteral("hari") || w == QStringLiteral("minggu")
-                || w == QStringLiteral("bulan") || w == QStringLiteral("tahun");
+                || w == QStringLiteral("bulan") || w == QStringLiteral("tahun")
+                || w == QStringLiteral("day") || w == QStringLiteral("days")
+                || w == QStringLiteral("week") || w == QStringLiteral("weeks")
+                || w == QStringLiteral("month") || w == QStringLiteral("months")
+                || w == QStringLiteral("year") || w == QStringLiteral("years");
+        };
+        auto canonicalUnit = [](const QString &w) -> QString {
+            if (w == QStringLiteral("day") || w == QStringLiteral("days"))
+                return QStringLiteral("hari");
+            if (w == QStringLiteral("week") || w == QStringLiteral("weeks"))
+                return QStringLiteral("minggu");
+            if (w == QStringLiteral("month") || w == QStringLiteral("months"))
+                return QStringLiteral("bulan");
+            if (w == QStringLiteral("year") || w == QStringLiteral("years"))
+                return QStringLiteral("tahun");
+            return w;
         };
 
         Unit u;
@@ -123,7 +155,8 @@ QDate DateParser::extractDate(const QList<Token> &tokens, QDate baseDate, QList<
         bool matched = true;
         int step = 1;
 
-        if (tok.word == QStringLiteral("nanti")) {
+        if (tok.word == QStringLiteral("nanti") || tok.word == QStringLiteral("later")
+            || tok.word == QStringLiteral("someday")) {
             u.type = Unit::Nanti;
         } else if (tok.word == QStringLiteral("hari")) {
             if (nx && nx->word == QStringLiteral("ini")) {
@@ -146,8 +179,36 @@ QDate DateParser::extractDate(const QList<Token> &tokens, QDate baseDate, QList<
             } else {
                 u.type = Unit::Today;
             }
+        } else if (tok.word == QStringLiteral("today")) {
+            u.type = Unit::Today;
         } else if (isRelativeDay(tok.word, u.amount)) {
             u.type = Unit::Relative;
+        } else if (tok.word == QStringLiteral("next") || tok.word == QStringLiteral("this")) {
+            if (nx && isDayName(nx->word, u.dayOfWeek)) {
+                u.type = Unit::DayNameDepan;
+                u.end = nx->endPos;
+                step = 2;
+            } else if (nx && isUnitWord(nx->word)) {
+                u.type = Unit::UnitDepan;
+                u.unit = canonicalUnit(nx->word);
+                u.end = nx->endPos;
+                step = 2;
+            } else {
+                matched = false;
+            }
+        } else if (tok.word == QStringLiteral("last") || tok.word == QStringLiteral("past")) {
+            if (nx && isDayName(nx->word, u.dayOfWeek)) {
+                u.type = Unit::DayNameLalu;
+                u.end = nx->endPos;
+                step = 2;
+            } else if (nx && isUnitWord(nx->word)) {
+                u.type = Unit::UnitLalu;
+                u.unit = canonicalUnit(nx->word);
+                u.end = nx->endPos;
+                step = 2;
+            } else {
+                matched = false;
+            }
         } else if (tok.word == QStringLiteral("minggu")
                    || tok.word == QStringLiteral("bulan")
                    || tok.word == QStringLiteral("tahun")) {
@@ -166,6 +227,25 @@ QDate DateParser::extractDate(const QList<Token> &tokens, QDate baseDate, QList<
             } else {
                 matched = false;
             }
+        } else if (isUnitWord(tok.word) && tok.word != QStringLiteral("hari")
+                   && !isDayName(tok.word, u.dayOfWeek)) {
+            if (nx && (nx->word == QStringLiteral("depan")
+                       || nx->word == QStringLiteral("next")
+                       || nx->word == QStringLiteral("this"))) {
+                u.type = Unit::UnitDepan;
+                u.unit = canonicalUnit(tok.word);
+                u.end = nx->endPos;
+                step = 2;
+            } else if (nx && (nx->word == QStringLiteral("lalu")
+                              || nx->word == QStringLiteral("last")
+                              || nx->word == QStringLiteral("ago"))) {
+                u.type = Unit::UnitLalu;
+                u.unit = canonicalUnit(tok.word);
+                u.end = nx->endPos;
+                step = 2;
+            } else {
+                matched = false;
+            }
         } else if (isDayName(tok.word, u.dayOfWeek)) {
             u.type = Unit::DayName;
             if (nx && nx->word == QStringLiteral("depan")) {
@@ -176,33 +256,54 @@ QDate DateParser::extractDate(const QList<Token> &tokens, QDate baseDate, QList<
                 u.type = Unit::DayNameLalu;
                 u.end = nx->endPos;
                 step = 2;
+            } else if (nx && (nx->word == QStringLiteral("next")
+                              || nx->word == QStringLiteral("this"))) {
+                u.type = Unit::DayNameDepan;
+                u.end = nx->endPos;
+                step = 2;
             }
         } else if (isNumber(tok.word) && nx && isUnitWord(nx->word)) {
             u.type = Unit::NumberUnit;
             u.amount = tok.word.toInt();
-            u.unit = nx->word;
+            u.unit = canonicalUnit(nx->word);
             u.end = nx->endPos;
             step = 2;
             if (nn && nn->word == QStringLiteral("lagi")) {
                 u.end = nn->endPos;
                 step = 3;
+            } else if (nn && nn->word == QStringLiteral("ago")) {
+                u.amount = -u.amount;
+                u.end = nn->endPos;
+                step = 3;
+            } else if (nn && nn->word == QStringLiteral("from")
+                       && i + 3 < n && tokens.at(i + 3).word == QStringLiteral("now")) {
+                u.end = tokens.at(i + 3).endPos;
+                step = 4;
             }
+        } else if (tok.word == QStringLiteral("in") && isNumber(nx ? nx->word : QString())
+                   && nn && isUnitWord(nn->word)) {
+            u.type = Unit::NumberUnit;
+            u.amount = nx->word.toInt();
+            u.unit = canonicalUnit(nn->word);
+            u.start = tok.startPos;
+            u.end = nn->endPos;
+            step = 3;
         } else if (isNumber(tok.word) && nx && nx->word == QStringLiteral("lagi")
                    && i + 2 < n && isUnitWord(tokens.at(i + 2).word)
                    && !consumed.contains(tokens.at(i + 2).startPos)) {
             u.type = Unit::NumberUnit;
             u.amount = tok.word.toInt();
-            u.unit = tokens.at(i + 2).word;
+            u.unit = canonicalUnit(tokens.at(i + 2).word);
             u.end = tokens.at(i + 2).endPos;
             step = 3;
         } else {
             static const QRegularExpression gluedRe(
-                QStringLiteral("^(\\d+)(hari|minggu|bulan|tahun)$"));
+                QStringLiteral("^(\\d+)(hari|minggu|bulan|tahun|day|days|week|weeks|month|months|year|years)$"));
             QRegularExpressionMatch gm = gluedRe.match(tok.word);
             if (gm.hasMatch()) {
                 u.type = Unit::NumberUnit;
                 u.amount = gm.captured(1).toInt();
-                u.unit = gm.captured(2);
+                u.unit = canonicalUnit(gm.captured(2));
                 if (nx && nx->word == QStringLiteral("lagi")) {
                     u.end = nx->endPos;
                     step = 2;

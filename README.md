@@ -2,8 +2,8 @@
 
 An integrated to-do / idea manager desktop app: one shared data model,
 five synchronized views. Items are added once — through a natural-language
-quick-add box — and seen everywhere: Inbox, List, Kanban, Calendar, and a
-mind-map (Peta) view.
+"Tambah Data" dialog (a table-led Inbox log) — and seen everywhere: Inbox,
+List, Kanban, Calendar, and a mind-map (Peta) view.
 
 > **Bahasa Indonesia?** Baca [`README.id.md`](README.id.md).
 
@@ -13,8 +13,9 @@ mind-map (Peta) view.
   Each item: title, description, due date, order, optional board + column.
 - **Five synchronized views** over a single shared model (ADR-0005):
   Inbox, List, Kanban, Calendar, Mind-map ("Peta").
-- **Natural-language quick add** — "besok jam 9", "senin depan", "3 hari lagi"
-  are parsed into due dates (C++ parser, ADR-0003). Text with no date defaults
+- **Natural-language add (ID + EN)** — "besok jam 9", "senin depan",
+  "3 hari lagi", "meeting tomorrow at 9 am", "in 3 days" are parsed into due
+  dates/time (C++ parser, ADR-0003, dual-language). Text with no date defaults
   to today.
 - **Drag & drop kanban** — move items between columns and reorder within a
   column; calendar cells accept drops to reschedule due dates.

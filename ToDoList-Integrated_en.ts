@@ -35,10 +35,6 @@
         <translation>Dark</translation>
     </message>
     <message>
-        <source>Aksen Pirus</source>
-        <translation type="vanished">Teal Accent</translation>
-    </message>
-    <message>
         <source>Pirus</source>
         <translation type="unfinished"></translation>
     </message>
@@ -55,230 +51,290 @@
     <name>ViewCalendar</name>
     <message>
         <source>Kalender</source>
-        <translation type="vanished">Calendar</translation>
+        <translation>Calendar</translation>
     </message>
     <message>
         <source>Peringatan: %1 Item belum punya tanggal due — tidak tampil di Kalender.</source>
-        <translation type="vanished">Warning: %1 items have no due date — they won&apos;t show on the calendar.</translation>
+        <translation>Warning: %1 items have no due date — they won&apos;t show on the calendar.</translation>
     </message>
     <message>
         <source>Hari ini</source>
-        <translation type="vanished">Today</translation>
+        <translation>Today</translation>
     </message>
     <message>
         <source>Inbox</source>
-        <translation type="vanished">Inbox</translation>
-    </message>
-    <message>
-        <source>Pindah ke kolom…</source>
-        <translation type="vanished">Move to column…</translation>
-    </message>
-    <message>
-        <source>Tutup</source>
-        <translation type="vanished">Close</translation>
+        <translation>Inbox</translation>
     </message>
 </context>
 <context>
     <name>ViewInbox</name>
     <message>
         <source>Semua</source>
-        <translation type="vanished">All</translation>
+        <translation>All</translation>
     </message>
     <message>
         <source>Inbox</source>
-        <translation type="vanished">Inbox</translation>
-    </message>
-    <message>
-        <source>Tulis Item — tanggal otomatis hari ini</source>
-        <translation type="vanished">Write an Item — due date defaults to today</translation>
-    </message>
-    <message>
-        <source>Tambah</source>
-        <translation type="vanished">Add</translation>
+        <translation>Inbox</translation>
     </message>
     <message>
         <source>Baru</source>
-        <translation type="vanished">New</translation>
+        <translation>New</translation>
     </message>
     <message>
         <source>Lama</source>
-        <translation type="vanished">Old</translation>
+        <translation>Old</translation>
     </message>
     <message>
         <source>Dikembalikan</source>
-        <translation type="vanished">Restored</translation>
+        <translation>Restored</translation>
     </message>
     <message>
         <source>Pindah ke kolom…</source>
-        <translation type="vanished">Move to column…</translation>
+        <translation>Move to column…</translation>
     </message>
     <message>
-        <source>Tidak ada Item di Inbox. Ketik di atas untuk menangkap Item.</source>
-        <translation type="vanished">No Items in the Inbox. Type above to capture an Item.</translation>
+        <source>Hapus «%1» dari Inbox?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Judul: &apos;%1&apos;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Jam %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NLP: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kembali</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tambah Data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kegiatan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tanggal</source>
+        <translation type="unfinished">Date</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation type="unfinished">Status</translation>
+    </message>
+    <message>
+        <source>Petakan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Aksi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tidak ada Item di Inbox. Tekan «Tambah Data» untuk menangkap kegiatan.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dukungan NLP (Indonesia &amp; English): ketik kegiatan sekaligus waktunya, misal «rapat senin jam 9», «beli susu besok», «meeting tomorrow at 9 am», «3 days from now». Tanggal &amp; jam diambil otomatis.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tulis kegiatan — bisa disertai tanggal &amp; jam natural…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tanggal (opsional — auto hari ini)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deskripsi (opsional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rincian tambahan…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kegiatan wajib diisi.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Batal</source>
+        <translation type="unfinished">Cancel</translation>
+    </message>
+    <message>
+        <source>Simpan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hapus Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hapus</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ViewKanban</name>
     <message>
         <source>+ Kolom</source>
-        <translation type="vanished">+ Column</translation>
+        <translation>+ Column</translation>
     </message>
     <message>
         <source>Belum ada Item</source>
-        <translation type="vanished">No items yet</translation>
+        <translation>No items yet</translation>
     </message>
     <message>
         <source>Belum ada Board. Klik &apos;+&apos; untuk membuat Board baru.</source>
-        <translation type="vanished">No boards yet. Click &apos;+&apos; to create a new board.</translation>
+        <translation>No boards yet. Click &apos;+&apos; to create a new board.</translation>
     </message>
     <message>
         <source>Setup Awal — Mode Peta</source>
-        <translation type="vanished">Initial Setup — Map Mode</translation>
+        <translation>Initial Setup — Map Mode</translation>
     </message>
     <message>
         <source>Pilih cara Peta menampilkan Board/Item. Pilihan tersimpan dan bisa diganti kapan saja lewat dropdown di area Peta.</source>
-        <translation type="vanished">Choose how the Map displays Boards/Items. Your choice is saved and can be changed anytime via the dropdown in the Map area.</translation>
+        <translation>Choose how the Map displays Boards/Items. Your choice is saved and can be changed anytime via the dropdown in the Map area.</translation>
     </message>
     <message>
         <source>Satu Papan Global</source>
-        <translation type="vanished">Single Global Board</translation>
+        <translation>Single Global Board</translation>
     </message>
     <message>
         <source>Multiple Papan</source>
-        <translation type="vanished">Multiple Boards</translation>
+        <translation>Multiple Boards</translation>
+    </message>
+    <message>
+        <source>Tambah Board</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tambah Kolom</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ViewList</name>
     <message>
         <source>Inbox</source>
-        <translation type="vanished">Inbox</translation>
+        <translation>Inbox</translation>
     </message>
     <message>
         <source>List</source>
-        <translation type="vanished">List</translation>
+        <translation>List</translation>
     </message>
     <message>
         <source>Urutkan</source>
-        <translation type="vanished">Sort by</translation>
+        <translation>Sort by</translation>
     </message>
     <message>
         <source>Tanggal</source>
-        <translation type="vanished">Date</translation>
+        <translation>Date</translation>
     </message>
     <message>
         <source>Status</source>
-        <translation type="vanished">Status</translation>
+        <translation>Status</translation>
     </message>
     <message>
         <source>Semua</source>
-        <translation type="vanished">All</translation>
+        <translation>All</translation>
     </message>
     <message>
         <source>Belum ada Item.</source>
-        <translation type="vanished">No items yet.</translation>
-    </message>
-    <message>
-        <source>Pindah ke kolom…</source>
-        <translation type="vanished">Move to column…</translation>
-    </message>
-    <message>
-        <source>Tutup</source>
-        <translation type="vanished">Close</translation>
+        <translation>No items yet.</translation>
     </message>
 </context>
 <context>
     <name>ViewMap</name>
     <message>
         <source>Peta</source>
-        <translation type="vanished">Map</translation>
+        <translation>Map</translation>
     </message>
     <message>
         <source>Gulir roda untuk zoom · seret area kosong untuk geser</source>
-        <translation type="vanished">Scroll to zoom · drag empty space to pan</translation>
+        <translation>Scroll to zoom · drag empty space to pan</translation>
     </message>
     <message>
         <source>Susun rapi</source>
-        <translation type="vanished">Auto-arrange</translation>
+        <translation>Auto-arrange</translation>
     </message>
     <message>
         <source>Satu Papan Global</source>
-        <translation type="vanished">Single Global Board</translation>
+        <translation>Single Global Board</translation>
     </message>
     <message>
         <source>Multiple Papan</source>
-        <translation type="vanished">Multiple Boards</translation>
+        <translation>Multiple Boards</translation>
     </message>
     <message>
         <source>Semua</source>
-        <translation type="vanished">All</translation>
+        <translation>All</translation>
     </message>
     <message>
         <source>Belum ada Item di peta. Tambahkan Item dari Inbox atau view lain.</source>
-        <translation type="vanished">No Items on the map yet. Add Items from the Inbox or another view.</translation>
+        <translation>No Items on the map yet. Add Items from the Inbox or another view.</translation>
     </message>
     <message>
         <source>Inbox</source>
-        <translation type="vanished">Inbox</translation>
-    </message>
-    <message>
-        <source>Pindah ke kolom…</source>
-        <translation type="vanished">Move to column…</translation>
-    </message>
-    <message>
-        <source>Tutup</source>
-        <translation type="vanished">Close</translation>
+        <translation>Inbox</translation>
     </message>
     <message>
         <source>Hapus koneksi</source>
-        <translation type="vanished">Delete connection</translation>
+        <translation>Delete connection</translation>
     </message>
     <message>
         <source>Batal</source>
-        <translation type="vanished">Cancel</translation>
+        <translation>Cancel</translation>
     </message>
     <message>
         <source>%1 → %2</source>
-        <translation type="vanished">%1 → %2</translation>
+        <translation>%1 → %2</translation>
     </message>
 </context>
 <context>
     <name>ViewSettings</name>
     <message>
         <source>Pengaturan</source>
-        <translation type="vanished">Settings</translation>
+        <translation>Settings</translation>
     </message>
     <message>
         <source>Tema</source>
-        <translation type="vanished">Theme</translation>
+        <translation>Theme</translation>
     </message>
     <message>
         <source>Mode Inbox</source>
-        <translation type="vanished">Inbox Mode</translation>
+        <translation>Inbox Mode</translation>
     </message>
     <message>
         <source>Global</source>
-        <translation type="vanished">Global</translation>
+        <translation>Global</translation>
     </message>
     <message>
         <source>Per-Board</source>
-        <translation type="vanished">Per-Board</translation>
+        <translation>Per-Board</translation>
     </message>
     <message>
         <source>Global = satu Inbox berisi semua Item belum dipetakan. Per-Board = Inbox terpecah per board.</source>
-        <translation type="vanished">Global = a single Inbox holding all unmapped items. Per-Board = Inbox split per board.</translation>
+        <translation>Global = a single Inbox holding all unmapped items. Per-Board = Inbox split per board.</translation>
     </message>
     <message>
         <source>Bahasa</source>
-        <translation type="vanished">Language</translation>
+        <translation>Language</translation>
     </message>
     <message>
         <source>Auto (Sistem)</source>
-        <translation type="vanished">Auto (System)</translation>
+        <translation>Auto (System)</translation>
     </message>
     <message>
         <source>Versi %1</source>
-        <translation type="vanished">Version %1</translation>
+        <translation>Version %1</translation>
     </message>
 </context>
 <context>

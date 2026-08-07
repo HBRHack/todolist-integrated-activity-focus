@@ -13,6 +13,7 @@ Rectangle {
     property var tabsModel: []
     property int selectedBoardId: -1
     property bool perBoardMode: false
+    property int pendingDeleteId: -1
 
     function refreshOptions() {
         var raw = repo.boardColumnOptions()
@@ -59,12 +60,77 @@ Rectangle {
         inboxModel.boardId = per ? selectedBoardId : -1
     }
 
-    function commitQuickAdd() {
-        var text = quickAddField.text.trim()
-        if (text.length === 0)
+    function openAddDialog() {
+        resetAddForm()
+        addDialog.open()
+        addTitleInput.forceActiveFocus()
+    }
+
+    function openDetail(itemId) {
+        detailPopup.show(itemId)
+    }
+
+    function requestDelete(itemId, title) {
+        pendingDeleteId = itemId
+        deleteConfirmText.text = qsTr("Hapus «%1» dari Inbox?").arg(title)
+        deleteConfirmDialog.open()
+    }
+
+    function commitDelete() {
+        if (pendingDeleteId !== -1)
+            repo.deleteItem(pendingDeleteId)
+        pendingDeleteId = -1
+        deleteConfirmDialog.close()
+    }
+
+    function resetAddForm() {
+        addTitleInput.text = ""
+        addDateField.text = ""
+        addDescriptionField.text = ""
+        addNlpPreview.visible = false
+        addErrorHint.visible = false
+    }
+
+    function updateNlpPreview() {
+        var txt = addTitleInput.text.trim()
+        if (txt.length === 0) {
+            addNlpPreview.visible = false
             return
-        repo.quickAdd(text)
-        quickAddField.text = ""
+        }
+        var p = repo.parseNlp(txt)
+        if (!p || !p.detected) {
+            addNlpPreview.visible = false
+            return
+        }
+        var parts = []
+        if (p.cleanTitle !== txt)
+            parts.push(qsTr("Judul: '%1'").arg(p.cleanTitle))
+        if (p.dueTime)
+            parts.push(qsTr("Jam %1").arg(p.dueTime))
+        parts.push(Format.dueDateString(p.dueDate))
+        addNlpPreview.text = qsTr("NLP: ") + parts.join(" · ")
+        addNlpPreview.visible = true
+    }
+
+    function commitAdd() {
+        var txt = addTitleInput.text.trim()
+        if (txt.length === 0) {
+            addErrorHint.visible = true
+            addTitleInput.forceActiveFocus()
+            return
+        }
+        addErrorHint.visible = false
+        repo.addItemNlp(txt, addDescriptionField.text.trim(), addDateField.text.trim())
+        resetAddForm()
+        addDialog.close()
+    }
+
+    function statusLabel(group) {
+        if (group === "baru")
+            return qsTr("Baru")
+        if (group === "lama")
+            return qsTr("Lama")
+        return qsTr("Kembali")
     }
 
     Connections {
@@ -93,7 +159,7 @@ Rectangle {
         anchors.margins: Theme.spacingLarge
         spacing: Theme.spacingMedium
 
-        // Header — display besar + counter mono
+        // Header — display besar + counter mono + aksi TAMBAH DATA
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
@@ -118,38 +184,12 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
-        }
-
-        // Quick add — input kotak 2px + tombol ink
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-
-            TextField {
-                id: quickAddField
-                objectName: "quickAddField"
-                Layout.fillWidth: true
-                Layout.preferredHeight: Theme.controlHeight
-                placeholderText: qsTr("Tulis Item — tanggal otomatis hari ini")
-                color: Theme.colorText
-                placeholderTextColor: Theme.colorMuted
-                padding: Theme.spacingMedium
-                font.family: Theme.fontFamilyBody
-                font.pixelSize: Theme.fontSizeBody
-                background: Rectangle {
-                    radius: 0
-                    color: Theme.colorSurface
-                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
-                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
-                }
-                onAccepted: commitQuickAdd()
-            }
 
             PrimaryButton {
-                objectName: "quickAddButton"
-                text: qsTr("Tambah")
+                objectName: "addDataButton"
+                text: qsTr("Tambah Data")
                 highlighted: true
-                onClicked: commitQuickAdd()
+                onClicked: root.openAddDialog()
             }
         }
 
@@ -170,13 +210,95 @@ Rectangle {
             }
         }
 
+        // Header tabel — label kolom hairline
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            color: Theme.colorSurfaceAlt
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Theme.spacingSmall
+                anchors.rightMargin: Theme.spacingSmall
+                spacing: Theme.spacingMedium
+
+                Text {
+                    Layout.preferredWidth: 40
+                    text: "#"
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Kegiatan")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    Layout.preferredWidth: 110
+                    text: qsTr("Tanggal")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    Layout.preferredWidth: 120
+                    text: qsTr("Status")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    Layout.preferredWidth: 220
+                    text: qsTr("Petakan")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    Layout.preferredWidth: 70
+                    text: qsTr("Aksi")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: Theme.colorMuted
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
+
+        // Tabel — baris hairline (ritme table-led, bukan kartu slab)
         ListView {
             id: listView
+            objectName: "inboxListView"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: Theme.spacingSmall
+            spacing: 0
             model: inboxModel
+            ScrollBar.vertical: BrutalScrollBar {}
             section.property: "group"
             section.criteria: ViewSection.FullString
             section.delegate: SectionHeader {
@@ -184,90 +306,105 @@ Rectangle {
                 text: section === "baru" ? qsTr("Baru") : section === "lama" ? qsTr("Lama") : qsTr("Dikembalikan")
             }
 
-            delegate: Item {
+delegate: Item {
                 width: listView.width
-                height: Theme.itemHeight
-
-                // Hard shadow slab
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.leftMargin: Theme.shadowOffset
-                    anchors.topMargin: Theme.shadowOffset
-                    color: Theme.colorShadow
-                }
+                height: 44
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 0
-                    color: Theme.colorSurface
-                    border.color: Theme.colorBorder
-                    border.width: Theme.borderWidth
+                    color: rowHover.hovered ? Theme.colorSurfaceAlt : "transparent"
                 }
 
-                ColumnLayout {
+                HoverHandler {
+                    id: rowHover
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: Theme.borderWidthThin
+                    color: Theme.colorBorder
+                }
+
+                RowLayout {
                     anchors.fill: parent
-                    anchors.margins: Theme.spacingMedium
-                    spacing: Theme.spacingTiny
+                    anchors.leftMargin: Theme.spacingSmall
+                    anchors.rightMargin: Theme.spacingSmall
+                    spacing: Theme.spacingMedium
+
+                    Text {
+                        Layout.preferredWidth: 40
+                        text: index + 1 < 10 ? "0" + (index + 1) : "" + (index + 1)
+                        font.family: Theme.fontFamilyMono
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.bold: true
+                        color: Theme.colorMuted
+                        verticalAlignment: Text.AlignVCenter
+                    }
 
                     Text {
                         Layout.fillWidth: true
                         text: title
                         elide: Text.ElideRight
                         font.family: Theme.fontFamilyBody
-                        font.pixelSize: Theme.fontSizeLarge
+                        font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                         color: Theme.colorText
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 110
+                        text: Format.dueDateString(dueDate)
+                        font.family: Theme.fontFamilyMono
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.colorMuted
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 120
+                        text: root.statusLabel(group)
+                        font.family: Theme.fontFamilyMono
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.bold: true
+                        color: Theme.colorAccentContent
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    SelectBox {
+                        Layout.preferredWidth: 220
+                        Layout.preferredHeight: Theme.smallControlHeight
+                        placeholderText: qsTr("Pindah ke kolom…")
+                        model: root.boardOptions
+                        textRole: "label"
+                        onActivated: {
+                            if (index >= 0)
+                                repo.moveItem(itemId, root.boardOptions[index].columnId, 0)
+                            currentIndex = -1
+                        }
                     }
 
                     RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Theme.spacingSmall
+                        Layout.preferredWidth: 70
+                        spacing: 2
 
-                        Text {
-                            text: Format.dueDateString(dueDate)
-                            font.family: Theme.fontFamilyMono
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.colorMuted
+                        SquareToolButton {
+                            objectName: "inboxEdit_" + itemId
+                            text: "✎"
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            onClicked: root.openDetail(itemId)
                         }
 
-                        Item { Layout.fillWidth: true }
-
-                        ComboBox {
-                            id: moveBox
-                            Layout.preferredWidth: 220
-                            Layout.preferredHeight: Theme.smallControlHeight
-                            font.family: Theme.fontFamilyBody
-                            font.pixelSize: Theme.fontSizeSmall
-                            displayText: currentIndex >= 0 ? currentText : qsTr("Pindah ke kolom…")
-                            model: root.boardOptions
-                            textRole: "label"
-                            onActivated: {
-                                if (index >= 0)
-                                    repo.moveItem(itemId, root.boardOptions[index].columnId, 0)
-                                currentIndex = -1
-                            }
-                            background: Rectangle {
-                                radius: 0
-                                color: Theme.colorSurfaceAlt
-                                border.color: Theme.colorBorder
-                                border.width: Theme.borderWidth
-                            }
-                            contentItem: Text {
-                                text: moveBox.displayText
-                                font: moveBox.font
-                                color: Theme.colorText
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: Theme.spacingSmall
-                                rightPadding: Theme.spacingHuge
-                                elide: Text.ElideRight
-                            }
-                            indicator: Rectangle {
-                                x: moveBox.width - width - 14
-                                y: moveBox.height / 2 - height / 2
-                                width: 8
-                                height: 2
-                                color: Theme.colorMuted
-                            }
+                        SquareToolButton {
+                            objectName: "inboxDelete_" + itemId
+                            text: "✕"
+                            danger: true
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            onClicked: root.requestDelete(itemId, title)
                         }
                     }
                 }
@@ -276,10 +413,266 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 visible: listView.count === 0
-                text: qsTr("Tidak ada Item di Inbox. Ketik di atas untuk menangkap Item.")
+                text: qsTr("Tidak ada Item di Inbox. Tekan «Tambah Data» untuk menangkap kegiatan.")
                 font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeMedium
                 color: Theme.colorMuted
+            }
+        }
+    }
+
+    // Dialog Tambah Data — NLP: ketik kegiatan + waktunya langsung dieksekusi
+    Popup {
+        id: addDialog
+        objectName: "addDataDialog"
+        parent: root
+        modal: true
+        width: 720
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Tambah Data")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: qsTr("Dukungan NLP (Indonesia & English): ketik kegiatan sekaligus waktunya, misal «rapat senin jam 9», «beli susu besok», «meeting tomorrow at 9 am», «3 days from now». Tanggal & jam diambil otomatis.")
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.colorMuted
+            }
+
+            // Kegiatan — field NLP
+            Text {
+                text: qsTr("Kegiatan")
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            TextField {
+                id: addTitleInput
+                objectName: "addTitleInput"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.controlHeight
+                placeholderText: qsTr("Tulis kegiatan — bisa disertai tanggal & jam natural…")
+                color: Theme.colorText
+                placeholderTextColor: Theme.colorMuted
+                padding: Theme.spacingMedium
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeBody
+                background: Rectangle {
+                    radius: 0
+                    color: Theme.colorSurfaceAlt
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                }
+                onTextChanged: root.updateNlpPreview()
+            }
+
+            Text {
+                id: addNlpPreview
+                objectName: "addNlpPreview"
+                Layout.fillWidth: true
+                visible: false
+                wrapMode: Text.WordWrap
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                color: Theme.colorAccentContent
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Text {
+                    text: qsTr("Tanggal (opsional — auto hari ini)")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.colorMuted
+                    Layout.fillWidth: true
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                TextField {
+                    id: addDateField
+                    objectName: "addDateField"
+                    Layout.preferredWidth: 170
+                    Layout.preferredHeight: Theme.controlHeight
+                    horizontalAlignment: Text.AlignRight
+                    verticalAlignment: Text.AlignVCenter
+                    padding: 8
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.colorText
+                    selectByMouse: true
+                    placeholderText: "yyyy-MM-dd"
+                    placeholderTextColor: Theme.colorMuted
+                    validator: RegExpValidator { regExp: /^\d{4}-\d{2}-\d{2}$/ }
+                    background: Rectangle {
+                        radius: 0
+                        color: Theme.colorSurfaceAlt
+                        border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                        border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                    }
+                }
+            }
+
+            Text {
+                text: qsTr("Deskripsi (opsional)")
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            TextArea {
+                id: addDescriptionField
+                objectName: "addDescriptionField"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                wrapMode: Text.WordWrap
+                selectByMouse: true
+                color: Theme.colorText
+                placeholderText: qsTr("Rincian tambahan…")
+                placeholderTextColor: Theme.colorMuted
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                background: Rectangle {
+                    radius: 0
+                    color: Theme.colorSurfaceAlt
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                }
+            }
+
+            Text {
+                id: addErrorHint
+                objectName: "addErrorHint"
+                Layout.fillWidth: true
+                visible: false
+                text: qsTr("Kegiatan wajib diisi.")
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                color: Theme.colorDanger
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Item { Layout.fillWidth: true }
+
+                PrimaryButton {
+                    text: qsTr("Batal")
+                    onClicked: addDialog.close()
+                }
+
+                PrimaryButton {
+                    objectName: "addDataSaveButton"
+                    text: qsTr("Simpan")
+                    highlighted: true
+                    onClicked: root.commitAdd()
+                }
+            }
+        }
+    }
+
+    // Detail item — edit tanggal & status dari baris Inbox
+    ItemDetailPopup {
+        id: detailPopup
+        parent: root
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        boardOptions: root.boardOptions
+    }
+
+    // Konfirmasi hapus item dari Inbox
+    Popup {
+        id: deleteConfirmDialog
+        objectName: "inboxDeleteDialog"
+        parent: root
+        modal: true
+        width: 400
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Hapus Item")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorDanger
+            }
+
+            Text {
+                id: deleteConfirmText
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: ""
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeMedium
+                color: Theme.colorText
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Item { Layout.fillWidth: true }
+
+                PrimaryButton {
+                    text: qsTr("Batal")
+                    onClicked: deleteConfirmDialog.close()
+                }
+
+                PrimaryButton {
+                    objectName: "inboxDeleteConfirm"
+                    text: qsTr("Hapus")
+                    highlighted: true
+                    onClicked: root.commitDelete()
+                }
             }
         }
     }

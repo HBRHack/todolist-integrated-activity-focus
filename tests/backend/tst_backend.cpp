@@ -31,6 +31,16 @@ static QDate prevMonday(const QDate &base)
     return base.addDays(-diff);
 }
 
+static QDate nextTuesday(const QDate &base)
+{
+    for (int i = 1; i <= 7; ++i) {
+        const QDate d = base.addDays(i);
+        if (d.dayOfWeek() == Qt::Tuesday)
+            return d;
+    }
+    return base;
+}
+
 class TstBackend : public QObject
 {
     Q_OBJECT
@@ -50,6 +60,8 @@ private slots:
     void columnProxyReflectsMotion();
     void moveToInboxKeepsColumnOrder();
     void quickAddDefaultsToToday();
+    void nlpParsesLikeQuickAdd();
+    void nlpManualDateOverride();
     void addItemInvalidDueDefaultsToToday();
     void inboxGroupingViaModels();
     void inboxProxyPerBoardFilter();
@@ -438,6 +450,45 @@ void TstBackend::quickAddDefaultsToToday()
             QCOMPARE(it.title, QStringLiteral("beli susu"));
         }
     }
+}
+
+void TstBackend::nlpParsesLikeQuickAdd()
+{
+    Repository repo;
+    const QVariantMap parsed = repo.parseNlp(QStringLiteral("rapat senin jam 9"));
+    QVERIFY(parsed.value(QStringLiteral("detected")).toBool());
+    QCOMPARE(parsed.value(QStringLiteral("cleanTitle")).toString(), QStringLiteral("rapat"));
+    QCOMPARE(parsed.value(QStringLiteral("dueDate")).toString(),
+             nextMonday(QDate::currentDate()).toString(Qt::ISODate));
+    QCOMPARE(parsed.value(QStringLiteral("dueTime")).toString(), QStringLiteral("09:00"));
+
+    const QVariantMap plain = repo.parseNlp(QStringLiteral("catat tanpa tanggal"));
+    QVERIFY(!plain.value(QStringLiteral("detected")).toBool());
+    QCOMPARE(plain.value(QStringLiteral("cleanTitle")).toString(),
+             QStringLiteral("catat tanpa tanggal"));
+
+    const int id = repo.addItemNlp(QStringLiteral("beli susu besok"),
+                                   QStringLiteral("2 liter"), QString());
+    const auto items = repo.items();
+    for (const ItemData &it : items) {
+        if (it.id == id) {
+            QCOMPARE(it.title, QStringLiteral("beli susu"));
+            QCOMPARE(it.dueDate, QDate::currentDate().addDays(1));
+            QCOMPARE(it.description, QStringLiteral("2 liter"));
+            QCOMPARE(it.columnId, -1);
+        }
+    }
+}
+
+void TstBackend::nlpManualDateOverride()
+{
+    Repository repo;
+    QVERIFY(repo.addItemNlp(QStringLiteral("jual garam besok"),
+                            QString(), QStringLiteral("2024-12-15")) > 0);
+    const auto items = repo.items();
+    QCOMPARE(items.size(), 1);
+    QCOMPARE(items.first().title, QStringLiteral("jual garam"));
+    QCOMPARE(items.first().dueDate, QDate(2024, 12, 15));
 }
 
 void TstBackend::addItemInvalidDueDefaultsToToday()
@@ -869,6 +920,37 @@ void TstBackend::dateParserGrammar()
     QCOMPARE(DateParser::parse(QStringLiteral("bulan depan")).dueDate, today.addMonths(1));
     QCOMPARE(DateParser::parse(QStringLiteral("tahun depan")).dueDate, today.addYears(1));
     QCOMPARE(DateParser::parse(QStringLiteral("1 bulan lagi")).dueDate, today.addMonths(1));
+
+    // English grammar
+    const struct EnCase {
+        const char *input;
+        int days;
+        const char *time;
+    } enCases[] = {
+        { "buy milk tomorrow", 1, "" },
+        { "call today", 0, "" },
+        { "3 days from now submit", 3, "" },
+        { "in 4 days pay", 4, "" },
+        { "2 weeks later deploy", 14, "" },
+        { "next week review", 7, "" },
+        { "last week done", -7, "" },
+        { "event at 5 pm", 0, "17:00" },
+        { "event at 9 am", 0, "09:00" },
+        { "event at 17:30", 0, "17:30" },
+        { "event at 21:00", 0, "21:00" },
+    };
+    for (const EnCase &c : enCases) {
+        const ParseResult r = DateParser::parse(QString::fromUtf8(c.input));
+        QCOMPARE(r.dueDate, today.addDays(c.days));
+        QCOMPARE(r.dueTime.toString(QStringLiteral("HH:mm")), QString::fromUtf8(c.time));
+    }
+
+    QCOMPARE(DateParser::parse("meeting next monday").dueDate, senin);
+    QCOMPARE(DateParser::parse("meeting last monday").dueDate, seninLalu);
+    QCOMPARE(DateParser::parse("meeting on monday").dueDate, senin);
+    QCOMPARE(DateParser::parse("meeting tuesday").dueDate, nextTuesday(today));
+    QCOMPARE(DateParser::parse("monday 9 am standup").dueDate, senin);
+    QCOMPARE(DateParser::parse("monday 9 am standup").dueTime, QTime(9, 0));
 }
 
 void TstBackend::nodeLayoutProducesLevelsWithoutOverlap()

@@ -9,12 +9,16 @@ import QtQuick 2.15
 QtObject {
     id: theme
 
+    // Warna — satu sumber (PRD §10). OKLCH tidak bisa diparse Qt 5.15 →
+    // hex terkunci di sini (lihat DESIGN.md). Semua rasio kontras teks
+    // diverifikasi WCAG ≥4.5 (accentContent/railMuted) dan ≥4.5 utk
+    // teks di atas dangerFill.
     readonly property var presets: [
-        { name: "light", label: qsTr("Terang"), background: "#F2F0E8", surface: "#FFFFFF", surfaceAlt: "#E6E4DA", text: "#141414", muted: "#63615A", accent: "#FF4D00", border: "#141414", danger: "#E53131", active: "#141414", accentText: "#141414", shadow: "#141414" },
-        { name: "dark", label: qsTr("Gelap"), background: "#141414", surface: "#232323", surfaceAlt: "#303030", text: "#F2F0E8", muted: "#9A9890", accent: "#7FB4FF", border: "#F2F0E8", danger: "#FF5252", active: "#7FB4FF", accentText: "#10233F", shadow: "#000000" },
-        { name: "pirus", label: qsTr("Pirus"), background: "#EEF3F0", surface: "#FFFFFF", surfaceAlt: "#DDE6E1", text: "#10211B", muted: "#5D6E66", accent: "#00A88E", border: "#10211B", danger: "#E53131", active: "#10211B", accentText: "#141414", shadow: "#10211B" },
-        { name: "elektrik", label: qsTr("Elektrik"), background: "#E3ECFA", surface: "#FFFFFF", surfaceAlt: "#D4E1F5", text: "#10233F", muted: "#5E7293", accent: "#2F6BFF", border: "#10233F", danger: "#E53131", active: "#10233F", accentText: "#141414", shadow: "#10233F" },
-        { name: "asam", label: qsTr("Asam"), background: "#EDF4E0", surface: "#FFFFFF", surfaceAlt: "#DFEAD0", text: "#1A2413", muted: "#66704F", accent: "#8FC900", border: "#1A2413", danger: "#E53131", active: "#1A2413", accentText: "#141414", shadow: "#1A2413" }
+        { name: "light", label: qsTr("Terang"), background: "#F2F0E8", surface: "#FFFFFF", surfaceAlt: "#E6E4DA", text: "#141414", muted: "#63615A", accent: "#FF4D00", border: "#141414", danger: "#B3261E", active: "#141414", accentText: "#141414", accentContent: "#C73A00", shadow: "#141414", dangerFill: "#B3261E", dangerText: "#FFFFFF", railMuted: "#A6A59A" },
+        { name: "dark", label: qsTr("Gelap"), background: "#141414", surface: "#232323", surfaceAlt: "#303030", text: "#F2F0E8", muted: "#9A9890", accent: "#7FB4FF", border: "#F2F0E8", danger: "#FF7B80", active: "#7FB4FF", accentText: "#10233F", accentContent: "#7FB4FF", shadow: "#000000", dangerFill: "#F44336", dangerText: "#141414", railMuted: "#63615A" },
+        { name: "pirus", label: qsTr("Pirus"), background: "#EEF3F0", surface: "#FFFFFF", surfaceAlt: "#DDE6E1", text: "#10211B", muted: "#5D6E66", accent: "#00A88E", border: "#10211B", danger: "#B3261E", active: "#10211B", accentText: "#00705E", accentContent: "#00705E", shadow: "#10211B", dangerFill: "#B3261E", dangerText: "#FFFFFF", railMuted: "#859188" },
+        { name: "elektrik", label: qsTr("Elektrik"), background: "#E3ECFA", surface: "#FFFFFF", surfaceAlt: "#D4E1F5", text: "#10233F", muted: "#5E7293", accent: "#2F6BFF", border: "#10233F", danger: "#B3261E", active: "#10233F", accentText: "#FFFFFF", accentContent: "#1D4ED8", shadow: "#10233F", dangerFill: "#B3261E", dangerText: "#FFFFFF", railMuted: "#8A93A5" },
+        { name: "asam", label: qsTr("Asam"), background: "#EDF4E0", surface: "#FFFFFF", surfaceAlt: "#DFEAD0", text: "#1A2413", muted: "#66704F", accent: "#8FC900", border: "#1A2413", danger: "#B3261E", active: "#1A2413", accentText: "#141414", accentContent: "#1A2413", shadow: "#1A2413", dangerFill: "#B3261E", dangerText: "#FFFFFF", railMuted: "#849765" }
     ]
 
     // Warna — satu sumber (PRD §10). OKLCH tidak bisa diparse Qt 5.15 →
@@ -26,10 +30,13 @@ QtObject {
     property color colorMuted
     property color colorAccent
     property color colorAccentText
+    property color colorAccentContent
     property color colorBorder
     property color colorDanger
-    property color colorDangerText: "#FFFFFF"
+    property color colorDangerText
+    property color colorDangerFill
     property color colorActive
+    property color colorRailMuted
 
     // Turunan (dihitung dari preset, bukan di-hardcode per preset)
     property color colorShadow: colorText
@@ -101,9 +108,13 @@ QtObject {
         colorMuted = p.muted
         colorAccent = p.accent
         colorAccentText = p.accentText
+        colorAccentContent = p.accentContent
         colorBorder = p.border
         colorDanger = p.danger
+        colorDangerText = p.dangerText
+        colorDangerFill = p.dangerFill
         colorActive = p.active
+        colorRailMuted = p.railMuted
         colorShadow = p.shadow
     }
 

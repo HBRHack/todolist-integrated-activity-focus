@@ -36,6 +36,9 @@ public:
                 const QDate &dueDate, const QTime &dueTime = QTime(),
                 int columnId = -1);
     Q_INVOKABLE int quickAdd(const QString &title);
+    Q_INVOKABLE QVariantMap parseNlp(const QString &text) const;
+    Q_INVOKABLE int addItemNlp(const QString &text, const QString &description,
+                const QString &dueOverride = QString());
     Q_INVOKABLE QVariantList boardColumnOptions() const;
     Q_INVOKABLE void updateItem(int itemId, const QString &title, const QString &description,
                 const QDate &dueDate = QDate());

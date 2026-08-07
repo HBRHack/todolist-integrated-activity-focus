@@ -87,3 +87,5 @@ Pendekatan: satu **Theme singleton** (`Theme.qml` dideklarasi sebagai QML Single
 - Preset disimpan di local config (QSettings atau tabel `app_settings` di SQLite yang sama)
 - Ganti tema = ganti isi property di singleton saat runtime → semua UI re-render otomatis (ini kelebihan QML: binding reaktif, gak perlu manual refresh tiap komponen)
 - Fase MVP: sediakan 2-3 preset dulu (Light/Dark/1 accent color pilihan). Custom color picker bebas → fase lanjut, bukan prioritas awal.
+
+NEXT FEATURE

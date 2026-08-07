@@ -31,7 +31,7 @@ Rectangle {
         id: face
         anchors.fill: parent
         radius: Theme.radiusMedium
-        color: root.highlighted ? Theme.colorAccent
+        color: root.highlighted ? Theme.colorActive
              : (mouse.hovered && !mouse.pressed) ? Theme.colorSurfaceAlt
              : mouse.pressed ? Theme.colorSurfaceAlt : Theme.colorSurface
         border.color: root.activeFocus ? Theme.colorAccent : Theme.colorBorder
@@ -50,7 +50,7 @@ Rectangle {
             font.bold: true
             font.capitalization: Font.AllUppercase
             font.letterSpacing: 0.5
-            color: root.highlighted ? Theme.colorAccentText : Theme.colorText
+            color: root.highlighted ? Theme.colorBackground : Theme.colorText
         }
     }
 

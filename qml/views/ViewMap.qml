@@ -210,41 +210,14 @@ Rectangle {
                 onClicked: root.susunRapi()
             }
 
-            ComboBox {
+            SelectBox {
                 id: mapModeDropdown
                 objectName: "mapModeDropdown"
                 width: 200
                 height: Theme.smallControlHeight
-                font.family: Theme.fontFamilyBody
-                font.pixelSize: Theme.fontSizeSmall
                 model: [qsTr("Satu Papan Global"), qsTr("Multiple Papan")]
                 currentIndex: appSettings.mapMode === "perboard" ? 1 : 0
                 onActivated: root.setMapMode(index === 0 ? "global" : "perboard")
-
-                background: Rectangle {
-                    radius: 0
-                    color: Theme.colorSurface
-                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
-                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
-                }
-
-                contentItem: Text {
-                    text: mapModeDropdown.displayText
-                    font: mapModeDropdown.font
-                    color: Theme.colorText
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: Theme.spacingSmall
-                    rightPadding: Theme.spacingHuge
-                    elide: Text.ElideRight
-                }
-
-                indicator: Rectangle {
-                    x: mapModeDropdown.width - width - 14
-                    y: mapModeDropdown.height / 2 - height / 2
-                    width: 8
-                    height: 2
-                    color: Theme.colorMuted
-                }
             }
 
             SquareToolButton {
@@ -300,6 +273,8 @@ Rectangle {
             contentWidth: canvasContent.width * root.zoom
             contentHeight: canvasContent.height * root.zoom
             boundsBehavior: Flickable.DragAndOvershootBounds
+            ScrollBar.vertical: BrutalScrollBar {}
+            ScrollBar.horizontal: BrutalScrollBar {}
 
             WheelHandler {
                 id: wheelZoom
@@ -437,7 +412,7 @@ Rectangle {
                                     font.family: Theme.fontFamilyMono
                                     font.pixelSize: Theme.fontSizeCaption
                                     font.bold: true
-                                    color: Theme.colorAccent
+                                    color: Theme.colorAccentContent
                                 }
                             }
                         }

@@ -230,6 +230,33 @@ int Repository::quickAdd(const QString &title)
     return addItem(result.cleanTitle, QString(), result.dueDate, result.dueTime);
 }
 
+QVariantMap Repository::parseNlp(const QString &text) const
+{
+    QVariantMap out;
+    ParseResult result = DateParser::parse(text);
+    out.insert(QStringLiteral("cleanTitle"), result.cleanTitle);
+    out.insert(QStringLiteral("dueDate"), result.dueDate.toString(Qt::ISODate));
+    if (result.dueTime.isValid())
+        out.insert(QStringLiteral("dueTime"), result.dueTime.toString(QStringLiteral("HH:mm")));
+    const bool detected = result.cleanTitle != text.trimmed()
+        || result.dueDate != QDate::currentDate()
+        || result.dueTime.isValid();
+    out.insert(QStringLiteral("detected"), detected);
+    return out;
+}
+
+int Repository::addItemNlp(const QString &text, const QString &description,
+                           const QString &dueOverride)
+{
+    ParseResult result = DateParser::parse(text);
+    if (!dueOverride.isEmpty()) {
+        const QDate override = QDate::fromString(dueOverride, Qt::ISODate);
+        if (override.isValid())
+            result.dueDate = override;
+    }
+    return addItem(result.cleanTitle, description, result.dueDate, result.dueTime);
+}
+
 QVariantList Repository::boardColumnOptions() const
 {
     QVariantList options;

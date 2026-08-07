@@ -41,7 +41,7 @@ Koneksi parent–child antara dua Item di Peta.
 _Avoid_: link, garis koneksi
 
 **Quick-add**:
-Kotak masukan cepat yang memahami kalimat tanggal Bahasa Indonesia ("beli susu besok", "rapat senin jam 9").
+Kemampuan menangkap Item dengan menulis kegiatan sekaligus waktunya memakai kalimat tanggal natural — **Bahasa Indonesia** ("beli susu besok", "rapat senin jam 9") dan **Inggris** ("meeting tomorrow at 9 am", "3 days from now"); tersedia di dialog **Tambah Data** Inbox (preview NLP langsung diisi saat mengetik).
 _Avoid_: capture bar, input cepat
 
 **Mode Inbox**:
@@ -55,6 +55,10 @@ _Avoid_: gaya peta, tipe mind-map
 **Bahasa Sumber**:
 Bahasa Indonesia — semua string UI ditulis dalam bahasa ini; sistem tanpa terjemahan yang cocok menampilkan bahasa ini sebagai default.
 _Avoid_: hardcode bahasa, bahasa UI campuran
+
+**Input NLP**:
+Parser tanggal natural memahami dua bahasa sekaligus tanpa mode — Indonesia dan Inggris (kamus hari ID+EN, `today/tomorrow`, `next/last week`, `at 9 am/pm`); hasilnya selalu bisa dikoreksi user lewat field Tanggal.
+_Avoid_: parser satu bahasa, input bebas tanpa umpan balik
 
 **Lokalisasi (i18n)**:
 Dua bahasa: Indonesia (sumber) + Inggris (`ToDoList-Integrated_en.ts`). Pemilihan otomatis dari sistem locale: `en_*` → Inggris, selain itu Indonesia. String UI harus selalu lewat `qsTr()`; nama bulan/hari memakai `Qt.locale()`.

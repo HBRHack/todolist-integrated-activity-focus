@@ -182,9 +182,12 @@ Rectangle {
                     width: Theme.smallControlHeight
                     height: Theme.smallControlHeight
                     radius: 0
-                    color: addBoardMouse.containsMouse ? Theme.colorSurfaceAlt : "transparent"
-                    border.color: addBoardMouse.containsMouse ? Theme.colorAccent : Theme.colorText
-                    border.width: Theme.borderWidth
+                    color: addBoardMouse.containsMouse ? Theme.colorSurfaceAlt : Theme.colorSurface
+                    border.color: addBoardMouse.containsMouse || activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: activeFocus ? 3 : Theme.borderWidth
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Tambah Board")
 
                     Text {
                         anchors.centerIn: parent
@@ -201,6 +204,13 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: root.beginAddBoard()
+                    }
+
+                    Keys.onPressed: {
+                        if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
+                            root.beginAddBoard()
+                            event.accepted = true
+                        }
                     }
                 }
 
@@ -350,9 +360,12 @@ Rectangle {
                     width: addColumnBtn.width + Theme.spacingLarge
                     height: Theme.smallControlHeight
                     radius: 0
-                    color: addColumnMouse.containsMouse ? Theme.colorSurfaceAlt : "transparent"
-                    border.color: Theme.colorAccent
-                    border.width: Theme.borderWidth
+                    color: addColumnMouse.containsMouse ? Theme.colorSurfaceAlt : Theme.colorSurface
+                    border.color: addColumnMouse.containsMouse || activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: activeFocus ? 3 : Theme.borderWidth
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Tambah Kolom")
 
                     Text {
                         id: addColumnBtn
@@ -361,7 +374,7 @@ Rectangle {
                         font.family: Theme.fontFamilyBody
                         font.pixelSize: Theme.fontSizeBody
                         font.bold: true
-                        color: Theme.colorAccent
+                        color: Theme.colorAccentContent
                     }
 
                     MouseArea {
@@ -372,6 +385,14 @@ Rectangle {
                         onClicked: {
                             newColumnVisible = true
                             newColumnField.forceActiveFocus()
+                        }
+                    }
+
+                    Keys.onPressed: {
+                        if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
+                            newColumnVisible = true
+                            newColumnField.forceActiveFocus()
+                            event.accepted = true
                         }
                     }
                 }
@@ -448,6 +469,7 @@ Rectangle {
             contentWidth: columns.length * (Theme.columnWidth + Theme.spacingMedium) + Theme.spacingHuge
             clip: true
             flickableDirection: Flickable.HorizontalFlick
+            ScrollBar.horizontal: BrutalScrollBar {}
 
             Row {
                 anchors.fill: parent
@@ -511,9 +533,7 @@ Rectangle {
                                     columnId: modelData.id
                                     Component.onCompleted: setItemModel(itemModel)
                                 }
-                                ScrollBar.vertical: ScrollBar {
-                                    policy: ScrollBar.AsNeeded
-                                }
+                                ScrollBar.vertical: BrutalScrollBar {}
 
                                 delegate: Item {
                                     id: cardRoot

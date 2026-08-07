@@ -8,6 +8,7 @@ Rectangle {
 
     property alias text: lbl.text
     property bool danger: false
+    property bool hovered: mouse.containsMouse
     signal clicked()
 
     implicitWidth: 24
