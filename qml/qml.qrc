@@ -13,6 +13,7 @@
         <file>components/BrutalScrollBar.qml</file>
         <file>components/SelectBox.qml</file>
         <file>components/Format.js</file>
+        <file>components/ShapeItem.qml</file>
         <file>components/qmldir</file>
         <file>views/ViewInbox.qml</file>
         <file>views/ViewList.qml</file>

@@ -16,6 +16,7 @@ Rectangle {
     property bool perBoardMode: false
     property var boardOptions: []
     property var edges: []
+    property var shapes: []
     property int edgeDragItemId: -1
     property var edgeDragStart: Qt.point(0, 0)
     property var edgeDragEnd: Qt.point(0, 0)
@@ -68,10 +69,15 @@ Rectangle {
     function applyFilter() {
         mapProxy.boardId = root.selectedBoardId
         root.refreshEdges()
+        root.refreshShapes()
     }
 
     function refreshEdges() {
         root.edges = repo.edgeList()
+    }
+
+    function refreshShapes() {
+        root.shapes = repo.shapeList(root.selectedBoardId)
     }
 
     function nodeItemById(itemId) {
@@ -156,6 +162,7 @@ Rectangle {
             root.loadBoards()
             root.refreshOptions()
             root.refreshEdges()
+            root.refreshShapes()
         }
     }
 
@@ -300,6 +307,25 @@ Rectangle {
                     color: "transparent"
                     border.color: Theme.colorBorder
                     border.width: Theme.borderWidth
+                }
+
+                Repeater {
+                    id: shapesRepeater
+                    model: root.shapes
+
+                    ShapeItem {
+                        objectName: "shape_" + modelData.id
+                        shapeId: modelData.id
+                        shapeType: modelData.type
+                        x: modelData.x
+                        y: modelData.y
+                        width: modelData.width
+                        height: modelData.height
+                        rotation: modelData.rotation
+                        points: modelData.points
+                        style: modelData.style
+                        linked: modelData.linkedItemId > 0
+                    }
                 }
 
                 Repeater {
