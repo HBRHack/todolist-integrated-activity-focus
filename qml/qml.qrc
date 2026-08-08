@@ -8,6 +8,7 @@
         <file>components/SectionHeader.qml</file>
         <file>components/NavItem.qml</file>
         <file>components/SquareToolButton.qml</file>
+        <file>components/ColumnColorPicker.qml</file>
         <file>components/ItemDetailPopup.qml</file>
         <file>components/BrutalScrollBar.qml</file>
         <file>components/SelectBox.qml</file>

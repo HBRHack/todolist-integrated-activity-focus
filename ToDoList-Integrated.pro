@@ -1,7 +1,7 @@
 QT += quick sql quickcontrols2
 
 # C++17 (PRD.md §7)
-CONFIG += c++17
+CONFIG += c++17 qtquickcompiler
 
 # Built against Qt 5.15 (PRD.md §7) — refuse anything older
 lessThan(QT_VERSION, 5.15): error("This project requires Qt 5.15 or newer (PRD.md §7).")
@@ -63,8 +63,6 @@ CONFIG += embed_translations
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
 
-# Additional import path used to resolve QML modules just for Qt Quick Designer
-#QML_DESIGNER_IMPORT_PATH =
 
 # Keep intermediate build artifacts out of the source tree
 OBJECTS_DIR = $$OUT_PWD/.obj

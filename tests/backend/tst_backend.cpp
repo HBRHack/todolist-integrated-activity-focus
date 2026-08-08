@@ -2,6 +2,7 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QSet>
+#include <algorithm>
 
 #include "database.h"
 #include "appsettings.h"
@@ -47,10 +48,12 @@ class TstBackend : public QObject
 
 private slots:
     void init();
-    void schemaIsV2();
+    void schemaIsV3();
     void seedCreatesUmumBoard();
     void settingsPersistAcrossReopen();
     void repositoryColumnCrud();
+    void columnColorPersists();
+    void columnColorInvalidKeyFallsBackToAccent();
     void columnReorder();
     void boardCrudAndDeleteSemantics();
     void itemCrudAndMapping();
@@ -94,9 +97,9 @@ void TstBackend::init()
     QVERIFY(db::seedDefaults());
 }
 
-void TstBackend::schemaIsV2()
+void TstBackend::schemaIsV3()
 {
-    QCOMPARE(db::schemaVersion(), 2);
+    QCOMPARE(db::schemaVersion(), 3);
 }
 
 void TstBackend::seedCreatesUmumBoard()
@@ -146,6 +149,56 @@ void TstBackend::repositoryColumnCrud()
 
     repo.deleteColumn(colId);
     QCOMPARE(repo.columnsForBoard(boardId).size(), 3);
+}
+
+void TstBackend::columnColorPersists()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+
+    const int colId = repo.addColumn(boardId, QStringLiteral("Backlog"));
+    QVERIFY(colId > 0);
+
+    auto colorOf = [&repo](int id) {
+        const auto all = repo.columnsForBoard(repo.boards().first().id);
+        for (const Column &c : all)
+            if (c.id == id)
+                return c.colorKey;
+        return QString();
+    };
+
+    QCOMPARE(colorOf(colId), QStringLiteral("accent"));
+
+    repo.setColumnColor(colId, QStringLiteral("danger"));
+    QCOMPARE(colorOf(colId), QStringLiteral("danger"));
+
+    QVariantList list = repo.columnList(boardId);
+    bool found = false;
+    for (const QVariant &v : list) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toInt() == colId) {
+            QCOMPARE(m.value(QStringLiteral("colorKey")).toString(), QStringLiteral("danger"));
+            found = true;
+        }
+    }
+    QVERIFY2(found, "kolom yang diwarnai tidak ada di columnList");
+}
+
+void TstBackend::columnColorInvalidKeyFallsBackToAccent()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int colId = repo.addColumn(boardId, QStringLiteral("Backlog"));
+
+    QSignalSpy spy(&repo, &Repository::changed);
+    repo.setColumnColor(colId, QStringLiteral("ungu-aneh"));
+
+    QCOMPARE(spy.count(), 1);
+
+    const auto all = repo.columnsForBoard(boardId);
+    auto it = std::find_if(all.cbegin(), all.cend(), [colId](const Column &c) { return c.id == colId; });
+    QVERIFY(it != all.cend());
+    QCOMPARE(it->colorKey, QStringLiteral("accent"));
 }
 
 void TstBackend::columnReorder()

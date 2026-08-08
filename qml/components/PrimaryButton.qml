@@ -13,6 +13,7 @@ Rectangle {
     signal clicked()
 
     implicitHeight: Theme.controlHeight
+    implicitWidth: lbl.implicitWidth + Theme.spacingLarge * 2
     radius: Theme.radiusMedium
     color: "transparent"
     activeFocusOnTab: true

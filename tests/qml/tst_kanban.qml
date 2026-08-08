@@ -194,6 +194,38 @@ TestCase {
         tearDown(view, comp)
     }
 
+    function test_columnColorStrip()
+    {
+        makeBoard()
+        var comp = Qt.createComponent("../../qml/views/ViewKanban.qml")
+        verify(comp.status === Component.Ready, comp.errorString())
+        var view = createView(comp)
+
+        // Jalur seam yang sama seperti picker warna di dialog (real-time):
+        // applyColumnColor(id, key) → repo.setColumnColor + reloadColumns.
+        view.applyColumnColor(colA, "danger")
+        wait(150)
+
+        compare(view.columns[0].colorKey, "danger")
+        var strip = findChild(view, "colStrip_" + colA)
+        verify(strip !== null, "strip kolom " + colA + " tidak ditemukan")
+        compare(strip.color.toString(), Theme.colorDanger.toString())
+
+        // Key tak dikenal dari QML: backend fallback ke accent (tanpa error diam)
+        view.applyColumnColor(colB, "tidak-valid")
+        wait(150)
+        compare(view.columns[1].colorKey, "accent")
+
+        // Mapping function (dipakai strip) untuk semua token yang valid
+        compare(view.columnColor("danger"), Theme.colorDanger)
+        compare(view.columnColor("active"), Theme.colorActive)
+        compare(view.columnColor("accentContent"), Theme.colorAccentContent)
+        compare(view.columnColor("accent"), Theme.colorAccent)
+        compare(view.columnColor("sembarang"), Theme.colorAccent)
+
+        tearDown(view, comp)
+    }
+
     function test_lastMappedAtKeptAcrossDrag()
     {
         makeBoard()

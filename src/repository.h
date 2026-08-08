@@ -24,6 +24,7 @@ public:
     QVector<Column> columnsForBoard(int boardId) const;
     Q_INVOKABLE int addColumn(int boardId, const QString &name);
     Q_INVOKABLE void renameColumn(int columnId, const QString &name);
+    Q_INVOKABLE void setColumnColor(int columnId, const QString &colorKey);
     Q_INVOKABLE void moveColumn(int boardId, int columnId, int newIndex);
     Q_INVOKABLE void deleteColumn(int columnId);
 

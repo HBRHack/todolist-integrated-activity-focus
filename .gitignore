@@ -80,5 +80,11 @@ CMakeLists.txt.user*
 /.obj/
 /.moc/
 /.rcc/
+# qmlcachegen in-source output (kalau build tak sengaja jalan dari root —
+# JANGAN build in-source, shadow build di build/ saja)
+/qmlcache_loader.cpp
+/qml_*_qml.cpp
+/qml_*_js.cpp
+/qml_qml_qmlcache.qrc
 # build-tests/ (shadow build untuk suite QML + backend)
 /build-tests/

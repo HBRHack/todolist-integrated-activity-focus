@@ -71,7 +71,16 @@ bool initSchema()
             "WHERE columns.id = items.column_id) WHERE column_id IS NOT NULL"));
         q.exec(QStringLiteral("PRAGMA user_version = 2"));
     }
-    return schemaVersion() == 2;
+    if (schemaVersion() < 3) {
+        QSqlQuery q(handle());
+        if (!q.exec(QStringLiteral(
+                "ALTER TABLE columns ADD COLUMN color_key TEXT NOT NULL DEFAULT 'accent'"))) {
+            qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+            return false;
+        }
+        q.exec(QStringLiteral("PRAGMA user_version = 3"));
+    }
+    return schemaVersion() == 3;
 }
 
 bool createV1Schema()

@@ -21,6 +21,7 @@ struct Column
     int boardId = -1;
     QString name;
     int orderIndex = 0;
+    QString colorKey = QStringLiteral("accent");
 };
 
 struct ItemData

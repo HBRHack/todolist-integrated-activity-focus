@@ -14,12 +14,53 @@ Rectangle {
     property var columns: []
 
     property var dragState: null
+    property bool dragging: false
     property bool newBoardVisible: false
     property bool renameBoardVisible: false
     property int renameBoardId: -1
     property bool newColumnVisible: false
     property bool renameColumnVisible: false
     property int renameColumnId: -1
+    property string pendingColumnColor: "accent"
+
+    // Lebar pemilih warna (ColumnColorPicker): 4 swatch 18px + 3 gap spacingSmall.
+    // Konstanta di root agar binding lebar kotak dialog tidak bergantung
+    // pada id anak (ReferenceError runtime di Qt 5.15 — lihat qt-515 §7.1).
+    readonly property int colorPickerWidth: 4 * 18 + 3 * Theme.spacingSmall
+
+    // Map color_key kolom ke token Theme preset aktif. Semua warna strip
+    // diambil dari sini — tidak ada hex bebas di view ini.
+    function columnColor(key) {
+        switch (key) {
+        case "danger": return Theme.colorDanger
+        case "active": return Theme.colorActive
+        case "accentContent": return Theme.colorAccentContent
+        default: return Theme.colorAccent
+        }
+    }
+
+    // Jalur tunggal pemilihan warna kolom yang dipakai kedua dialog.
+    // columnId === -1 → kolom belum dibuat (dialog tambah) → simpan pending;
+    // dipakai addColumn() begitu kolom lahir. Kalau kolom sudah ada, update
+    // langsung real-time tanpa tombol simpan.
+    function applyColumnColor(columnId, key) {
+        if (columnId === -1) {
+            pendingColumnColor = key
+            return
+        }
+        repo.setColumnColor(columnId, key)
+        reloadColumns()
+    }
+
+    // Baca color_key kolom dari cache kolom yang baru di-reload (tampil di
+    // picker dialog rename sebagai swatch yang sedang aktif).
+    function currentColumnColor(columnId) {
+        for (var i = 0; i < columns.length; ++i) {
+            if (columns[i].id === columnId)
+                return columns[i].colorKey || "accent"
+        }
+        return "accent"
+    }
 
     function reloadBoards() {
         boards = repo.boardList()
@@ -80,6 +121,7 @@ Rectangle {
 
     function ghostHide() {
         dragGhost.visible = false
+        dragging = false
     }
 
     function addBoard() {
@@ -115,7 +157,9 @@ Rectangle {
     function addColumn() {
         var name = newColumnField.text.trim()
         if (name.length === 0 || selectedBoardId === -1) return
-        repo.addColumn(selectedBoardId, name)
+        var id = repo.addColumn(selectedBoardId, name)
+        applyColumnColor(id, pendingColumnColor)
+        pendingColumnColor = "accent"
         newColumnField.text = ""
         newColumnVisible = false
         reloadColumns()
@@ -383,6 +427,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
+                            root.pendingColumnColor = "accent"
                             newColumnVisible = true
                             newColumnField.forceActiveFocus()
                         }
@@ -390,6 +435,7 @@ Rectangle {
 
                     Keys.onPressed: {
                         if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
+                            root.pendingColumnColor = "accent"
                             newColumnVisible = true
                             newColumnField.forceActiveFocus()
                             event.accepted = true
@@ -397,65 +443,91 @@ Rectangle {
                     }
                 }
 
-                // Inline add column
+                // Inline add column — field nama + pemilih warna strip
                 Rectangle {
                     visible: newColumnVisible
-                    width: newColumnField.width + Theme.spacingLarge
+                    width: newColumnField.width + root.colorPickerWidth + Theme.spacingLarge + Theme.spacingLarge
                     height: Theme.smallControlHeight
                     radius: 0
                     border.color: Theme.colorAccent
                     border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
-                    TextInput {
-                        id: newColumnField
-                        objectName: "newColumnField"
-                        anchors.centerIn: parent
-                        width: 100
-                        font.family: Theme.fontFamilyBody
-                        font.pixelSize: Theme.fontSizeBody
-                        color: Theme.colorText
-                        clip: true
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingTiny
+                        spacing: Theme.spacingMedium
 
-                        Keys.onReturnPressed: addColumn()
-                        Keys.onEscapePressed: {
-                            newColumnVisible = false
-                            newColumnField.text = ""
+                        TextInput {
+                            id: newColumnField
+                            objectName: "newColumnField"
+                            width: 100
+                            height: Theme.smallControlHeight
+                            font.family: Theme.fontFamilyBody
+                            font.pixelSize: Theme.fontSizeBody
+                            color: Theme.colorText
+                            clip: true
+                            verticalAlignment: Text.AlignVCenter
+
+                            Keys.onReturnPressed: addColumn()
+                            Keys.onEscapePressed: {
+                                newColumnVisible = false
+                                newColumnField.text = ""
+                            }
+                        }
+
+                        ColumnColorPicker {
+                            id: addColorPicker
+                            selectedKey: root.pendingColumnColor
+                            onPicked: root.applyColumnColor(-1, key)
                         }
                     }
                 }
 
-                // Inline rename column
+                // Inline rename column — field nama + pemilih warna strip (real-time)
                 Rectangle {
                     visible: renameColumnVisible
-                    width: renameColumnField.width + Theme.spacingLarge
+                    width: renameColumnField.width + root.colorPickerWidth + Theme.spacingLarge + Theme.spacingMedium
                     height: Theme.smallControlHeight
                     radius: 0
                     border.color: Theme.colorAccent
                     border.width: Theme.borderWidth
                     color: Theme.colorSurface
 
-                    TextInput {
-                        id: renameColumnField
-                        anchors.centerIn: parent
-                        width: 120
-                        font.family: Theme.fontFamilyBody
-                        font.pixelSize: Theme.fontSizeBody
-                        color: Theme.colorText
-                        clip: true
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingTiny
+                        spacing: Theme.spacingMedium
 
-                        Keys.onReturnPressed: {
-                            var name = renameColumnField.text.trim()
-                            if (name.length > 0 && renameColumnId !== -1) {
-                                repo.renameColumn(renameColumnId, name)
-                                reloadColumns()
+                        TextInput {
+                            id: renameColumnField
+                            width: 120
+                            height: Theme.smallControlHeight
+                            font.family: Theme.fontFamilyBody
+                            font.pixelSize: Theme.fontSizeBody
+                            color: Theme.colorText
+                            clip: true
+                            verticalAlignment: Text.AlignVCenter
+
+                            Keys.onReturnPressed: {
+                                var name = renameColumnField.text.trim()
+                                if (name.length > 0 && renameColumnId !== -1) {
+                                    repo.renameColumn(renameColumnId, name)
+                                    reloadColumns()
+                                }
+                                renameColumnVisible = false
+                                renameColumnId = -1
                             }
-                            renameColumnVisible = false
-                            renameColumnId = -1
+                            Keys.onEscapePressed: {
+                                renameColumnVisible = false
+                                renameColumnId = -1
+                            }
                         }
-                        Keys.onEscapePressed: {
-                            renameColumnVisible = false
-                            renameColumnId = -1
+
+                        ColumnColorPicker {
+                            id: renameColorPicker
+                            selectedKey: root.currentColumnColor(renameColumnId)
+                            onPicked: root.applyColumnColor(renameColumnId, key)
                         }
                     }
                 }
@@ -468,6 +540,7 @@ Rectangle {
             Layout.fillHeight: true
             contentWidth: columns.length * (Theme.columnWidth + Theme.spacingMedium) + Theme.spacingHuge
             clip: true
+            interactive: !root.dragging
             flickableDirection: Flickable.HorizontalFlick
             ScrollBar.horizontal: BrutalScrollBar {}
 
@@ -490,9 +563,20 @@ Rectangle {
 
                             property bool dropHighlight: false
 
+                            // Strip warna identitas kolom — cuma bagian atas, badan kolom tetap netral
+                            Rectangle {
+                                objectName: "colStrip_" + modelData.id
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                height: 6
+                                color: root.columnColor(modelData.colorKey)
+                            }
+
                             ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: Theme.spacingSmall
+                            anchors.topMargin: Theme.spacingSmall + 6
                             spacing: Theme.spacingSmall
 
                             // Column header — display + count mono
@@ -527,6 +611,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
+                                interactive: !root.dragging
                                 spacing: Theme.spacingTiny
                                 model: ColumnProxyModel {
                                     id: proxyModel
@@ -596,6 +681,7 @@ Rectangle {
                                             id: dragArea
                                             anchors.fill: parent
                                             hoverEnabled: true
+                                            preventStealing: true
                                             property bool dragActive: false
                                             property point pressPos: Qt.point(0, 0)
 
@@ -620,23 +706,23 @@ Rectangle {
                                                 if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
                                                     return
                                                 dragActive = true
+                                                root.dragging = true
                                                 root.ghostShow(title)
+                                                root.ghostMove(card.mapToItem(root, mouse.x, mouse.y))
                                             }
                                             onReleased: {
                                                 if (dragActive) {
-                                                    card.Drag.drop()
+                                                    dragGhost.Drag.drop()
                                                     root.ghostHide()
                                                 }
                                                 dragActive = false
                                             }
+                                            onCanceled: {
+                                                dragActive = false
+                                                root.ghostHide()
+                                            }
                                         }
                                     }
-
-                                    Drag.active: dragArea.dragActive
-                                    Drag.source: card
-                                    Drag.keys: ["kanbanItem"]
-                                    Drag.hotSpot.x: card.width / 2
-                                    Drag.hotSpot.y: card.height / 2
 
                                     opacity: dragArea.dragActive ? 0.4 : 1.0
                                 }
@@ -754,6 +840,12 @@ Rectangle {
         height: Theme.cardHeight
         radius: 0
         color: Theme.colorSurface
+
+        Drag.active: dragGhost.visible
+        Drag.source: dragGhost
+        Drag.keys: ["kanbanItem"]
+        Drag.hotSpot.x: width / 2
+        Drag.hotSpot.y: height / 2
 
         Rectangle {
             anchors.fill: parent

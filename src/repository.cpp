@@ -81,7 +81,7 @@ QVector<Column> Repository::columnsForBoard(int boardId) const
     QVector<Column> out;
     QSqlQuery q(db::handle());
     q.prepare(QStringLiteral(
-        "SELECT id, board_id, name, order_index FROM columns "
+        "SELECT id, board_id, name, order_index, color_key FROM columns "
         "WHERE board_id = :b ORDER BY order_index, id"));
     q.bindValue(QStringLiteral(":b"), boardId);
     q.exec();
@@ -91,6 +91,7 @@ QVector<Column> Repository::columnsForBoard(int boardId) const
         c.boardId = q.value(1).toInt();
         c.name = q.value(2).toString();
         c.orderIndex = q.value(3).toInt();
+        c.colorKey = q.value(4).toString();
         out.append(c);
     }
     return out;
@@ -116,6 +117,20 @@ void Repository::renameColumn(int columnId, const QString &name)
     QSqlQuery q(db::handle());
     q.prepare(QStringLiteral("UPDATE columns SET name = :n WHERE id = :id"));
     q.bindValue(QStringLiteral(":n"), name);
+    q.bindValue(QStringLiteral(":id"), columnId);
+    if (q.exec())
+        emit changed();
+}
+
+void Repository::setColumnColor(int columnId, const QString &colorKey)
+{
+    QString key = colorKey;
+    if (key != QStringLiteral("danger") && key != QStringLiteral("active")
+        && key != QStringLiteral("accentContent"))
+        key = QStringLiteral("accent");
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("UPDATE columns SET color_key = :k WHERE id = :id"));
+    q.bindValue(QStringLiteral(":k"), key);
     q.bindValue(QStringLiteral(":id"), columnId);
     if (q.exec())
         emit changed();
@@ -298,6 +313,7 @@ QVariantList Repository::columnList(int boardId) const
         m.insert(QStringLiteral("boardId"), c.boardId);
         m.insert(QStringLiteral("name"), c.name);
         m.insert(QStringLiteral("orderIndex"), c.orderIndex);
+        m.insert(QStringLiteral("colorKey"), c.colorKey);
         out.append(m);
     }
     return out;

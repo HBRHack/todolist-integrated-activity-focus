@@ -40,6 +40,18 @@ _Avoid_: diagram, grafik
 Koneksi parent–child antara dua Item di Peta.
 _Avoid_: link, garis koneksi
 
+**Bentuk (Shape)**:
+Anotasi visual bebas di atas kanvas Peta — kotak, lingkaran, segitiga, garis/panah, atau coretan bebas — digambar langsung oleh user; bisa berupa Anotasi Peta standalone atau terhubung ke Item (Mengonversi).
+_Avoid_: shape, stiker, coretan
+
+**Anotasi Peta**:
+Bentuk yang murni visual dan tidak menjadi Item — tidak muncul di Kanban, List, maupun Kalender.
+_Avoid_: dekorasi, gambar tempel
+
+**Mengonversi**:
+Aksi mengubah Bentuk yang sudah digambar menjadi Item sungguhan yang ter-link (mengalir ke Kanban/List/Kalender); Bentuk menjadi terkunci dan tidak bisa diedit lagi.
+_Avoid_: upgrade, jadikan task
+
 **Quick-add**:
 Kemampuan menangkap Item dengan menulis kegiatan sekaligus waktunya memakai kalimat tanggal natural — **Bahasa Indonesia** ("beli susu besok", "rapat senin jam 9") dan **Inggris** ("meeting tomorrow at 9 am", "3 days from now"); tersedia di dialog **Tambah Data** Inbox (preview NLP langsung diisi saat mengetik).
 _Avoid_: capture bar, input cepat
