@@ -464,4 +464,99 @@ TestCase {
         h.comp.destroy()
         cleanupShape(shapeId)
     }
+
+    function test_shapeBoardFilterShowsLocalBoardShapesOnly()
+    {
+        makeData()
+        var boardB = repo.addBoard("Tes Peta B")
+        var shapeA = makeShape(boardId)
+        var shapeB = repo.addShape(boardB, "ellipse", 500, 300, 100, 80, 0, "[]",
+            '{"stroke":"border","fill":"surface","strokeWidth":2}')
+        var shapeGlobal = repo.addShape(-1, "line", 900, 400, 60, 0, 0,
+            "[[0,0],[1,1]]", '{"stroke":"accent","strokeWidth":2}')
+        verify(shapeA > 0 && shapeB > 0 && shapeGlobal > 0, "addShape gagal")
+        var h = createMap()
+
+        // Mode global (default): semua bentuk tampil
+        verify(findChild(h.view, "shape_" + shapeA) !== null, "bentuk board A tidak tampil di mode global")
+        verify(findChild(h.view, "shape_" + shapeB) !== null, "bentuk board B tidak tampil di mode global")
+        verify(findChild(h.view, "shape_" + shapeGlobal) !== null, "bentuk global tidak tampil di mode global")
+
+        h.view.selectBoard(boardId)
+        wait(200)
+        verify(findChild(h.view, "shape_" + shapeA) !== null, "bentuk board A hilang saat board-nya dipilih")
+        verify(findChild(h.view, "shape_" + shapeB) === null, "bentuk board lain masih tampil saat filter board")
+        verify(findChild(h.view, "shape_" + shapeGlobal) === null, "bentuk global masih tampil di mode per-board")
+
+        h.view.selectBoard(-1)
+        wait(200)
+        verify(findChild(h.view, "shape_" + shapeGlobal) !== null, "bentuk global tidak kembali di mode global")
+
+        h.view.destroy()
+        h.comp.destroy()
+        repo.deleteShape(shapeA)
+        repo.deleteShape(shapeB)
+        repo.deleteShape(shapeGlobal)
+        repo.deleteBoard(boardB)
+        cleanupBoard()
+    }
+
+    function test_drawCommitCallsRepositoryAndAutoTitleAsItem()
+    {
+        makeData()
+        var h = createMap()
+        h.view.selectBoard(boardId)
+        wait(200)
+
+        // Lock: tool selain pan → kanvas tidak bisa di-pan
+        var canvas = findChild(h.view, "mapCanvas")
+        verify(canvas !== null, "kanvas tidak ditemukan")
+        compare(canvas.interactive, true, "kanvas tidak pannable di mode pan")
+        h.view.setTool("rectangle")
+        compare(canvas.interactive, false, "kanvas masih bisa dipan saat tool gambar aktif")
+        h.view.setTool("pan")
+        compare(canvas.interactive, true, "kanvas tidak pannable setelah kembali ke pan")
+
+        // Commit menggambar → Repository (seam release DrawLayer)
+        h.view.setTool("rectangle")
+        var id1 = h.view.commitShape("rectangle", Qt.point(300, 200), Qt.point(420, 320), [])
+        verify(id1 > 0, "commitShape persegi tidak masuk repository")
+
+        var pts = [Qt.point(400, 100), Qt.point(480, 180), Qt.point(560, 140)]
+        var id2 = h.view.commitShape("freehand", pts[0], pts[2], pts)
+        verify(id2 > 0, "commitShape freehand tidak masuk repository")
+        compare(repo.shapeList(boardId).length, 2, "jumlah bentuk di repo salah")
+
+        var m2 = repo.shapeList(boardId)[1]
+        var parsedPoints = m2.points
+        compare(parsedPoints.length, 3, "points freehand tidak tersimpan")
+        compare(Math.round(parsedPoints[0][0] * 1000), 0, "freehand tidak ternormalisasi 0")
+
+        // Toggle As Item: commit → Item ter-link + auto-title
+        h.view.asItem = true
+        var id3 = h.view.commitShape("ellipse", Qt.point(600, 400), Qt.point(760, 520), [])
+        verify(id3 > 0, "commitShape As Item tidak masuk repository")
+        wait(200)
+
+        var linkedShape = null
+        for (var i = 0; i < repo.shapeList(boardId).length; ++i) {
+            if (repo.shapeList(boardId)[i].id === id3)
+                linkedShape = repo.shapeList(boardId)[i]
+        }
+        verify(linkedShape !== null, "bentuk As Item tidak ditemukan")
+        var linkedId = linkedShape.linkedItemId
+        verify(linkedId > 0, "bentuk As Item tidak ter-link ke Item")
+        var title = repo.itemInfo(linkedId).title
+        verify(title.indexOf("Lingkaran") === 0, "auto-title tidak memakai format '<Tipe> HH:mm': " + title)
+
+        var node = findChild(h.view, "node_" + linkedId)
+        verify(node !== null, "node hasil draw As Item tidak muncul")
+
+        h.view.destroy()
+        h.comp.destroy()
+        repo.deleteItem(linkedId)
+        repo.deleteShape(id1)
+        repo.deleteShape(id2)
+        cleanupShape(id3)
+    }
 }

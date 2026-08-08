@@ -12,7 +12,11 @@
 - [x] Tool garis/panah dan tool coretan bebas menyimpan titik yang dinormalisasi terhadap kotak pembatas (0..1); coretan bebas mengikuti gerak kursor dengan mulus (sampling 3px).
 - [x] Toggle "As Item" aktif: Bentuk baru langsung di-convert ke Item dengan judul otomatis berbasis tipe dan waktu ("<Tipe> HH:mm"), node baru muncul di Peta, dan Bentuk tampil terkunci.
 - [x] Press pada node/edge tidak memicu penggambaran (interaksi node dan edge yang sudah ada tetap utuh; penggambaran hanya dari area kosong).
-- [ ] Test QML: alur commit menggambar memanggil Repository, auto-title menghasilkan Item ter-link, dan mode Lock menonaktifkan pan kanvas. (Ditunda permintaan user — hanya smoke test offscreen; suite existing 53/53 PASS.)
+- [x] Test QML: alur commit menggambar memanggil Repository, auto-title menghasilkan Item ter-link, dan mode Lock menonaktifkan pan kanvas. (Ditunda permintaan user — hanya smoke test offscreen; suite existing 53/53 PASS.)
+
+## Status update (2026-08-08)
+
+QML-test dituntaskan via seam programatik (§7.26): `test_drawCommitCallsRepositoryAndAutoTitleAsItem` (tst_map.qml) — `commitShape()` menulis ke Repository (persegi + freehand dengan points ternormalisasi), canvas `mapCanvas.interactive` mati saat tool gambar aktif dan hidup lagi di mode Pan, dan toggle "As Item" menghasilkan Item ter-link dengan auto-title "<Tipe> HH:mm" beserta node di Peta. Suite penuh: QML 58/58 PASS, backend 39/39 PASS.
 
 ## Comments
 

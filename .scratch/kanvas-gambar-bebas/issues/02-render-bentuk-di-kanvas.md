@@ -10,7 +10,11 @@
 - [x] Delegate dengan `linked_item_id` terisi tampil dalam state terkunci (tidak ada kontrol interaksi) dengan penanda visual "Item".
 - [x] Lapisan repeater Bentuk tampil di bawah node dan edge (urutan deklarasi), objectName stabil `shape_<id>`.
 - [x] Daftar Bentuk di-refresh pada sinyal `changed`, saat board dipilih, dan saat Peta dibuka; mode global menampilkan semua Bentuk, mode per-board menampilkan Bentuk board tersebut.
-- [ ] Test QML: Bentuk yang dibuat via Repository muncul sebagai delegate; Bentuk board lain tidak muncul saat board berbeda dipilih; Bentuk global muncul di mode global. (Ditunda atas permintaan user — jalankan bersama tiket 03/04.)
+- [x] Test QML: Bentuk yang dibuat via Repository muncul sebagai delegate; Bentuk board lain tidak muncul saat board berbeda dipilih; Bentuk global muncul di mode global. (Ditunda atas permintaan user — jalankan bersama tiket 03/04.)
+
+## Comments
+
+Dituntaskan 2026-08-08 bersama isu 03/04: `test_shapeSelectAndEditCommitCallsUpdateShapePosition` memverifikasi bentuk dari Repository tampil sebagai delegate (`shape_<id>`), dan `test_shapeBoardFilterShowsLocalBoardShapesOnly` (tst_map.qml) memverifikasi filter per-board menyembunyikan bentuk board lain + bentuk global, serta kembalinya semua bentuk di mode global.
 
 ## Comments
 
