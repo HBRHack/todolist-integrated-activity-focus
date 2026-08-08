@@ -653,7 +653,10 @@ int Repository::convertShapeToEntity(int shapeId, const QString &title)
         u.prepare(QStringLiteral("UPDATE items SET board_id = :b WHERE id = :i"));
         u.bindValue(QStringLiteral(":b"), shapeBoardId);
         u.bindValue(QStringLiteral(":i"), itemId);
-        u.exec();
+        if (!u.exec()) {
+            deleteItem(itemId);
+            return -1;
+        }
     }
     setNodePosition(itemId, QPointF(cx, cy));
 
