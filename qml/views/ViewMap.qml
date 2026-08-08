@@ -24,6 +24,14 @@ Rectangle {
     property int edgePopupId: -1
     property bool prevPerBoardMode: false
 
+    property string tool: "pan"
+    property string lastTool: "select"
+    property bool asItem: false
+    property bool drawing: false
+    property string drawType: ""
+    property var drawStart: Qt.point(0, 0)
+    property var drawPoints: []
+
     readonly property int canvasWidth: 3000
     readonly property int canvasHeight: 3000
 
@@ -133,6 +141,112 @@ Rectangle {
 
     function saveNodePosition(itemId, pos) {
         repo.setNodePosition(itemId, Qt.point(pos.x, pos.y))
+    }
+
+    function isDrawTool(t) {
+        return t === "rectangle" || t === "ellipse" || t === "triangle"
+            || t === "line" || t === "arrow" || t === "freehand"
+    }
+
+    function setTool(t) {
+        if (t === "pan")
+            root.tool = "pan"
+        else {
+            root.lastTool = t
+            root.tool = t
+        }
+    }
+
+    function typeDisplayName(type) {
+        switch (type) {
+        case "rectangle": return qsTr("Kotak")
+        case "ellipse": return qsTr("Lingkaran")
+        case "triangle": return qsTr("Segitiga")
+        case "line": return qsTr("Garis")
+        case "arrow": return qsTr("Panah")
+        case "freehand": return qsTr("Coretan")
+        }
+        return type
+    }
+
+    function shapeStyleFor(type) {
+        if (type === "line" || type === "arrow" || type === "freehand")
+            return { "stroke": "accent", "strokeWidth": 2 }
+        return { "stroke": "border", "fill": "surface", "strokeWidth": 2 }
+    }
+
+    function boundingRect(points) {
+        var minX = points[0].x
+        var minY = points[0].y
+        var maxX = points[0].x
+        var maxY = points[0].y
+        for (var i = 1; i < points.length; ++i) {
+            minX = Math.min(minX, points[i].x)
+            minY = Math.min(minY, points[i].y)
+            maxX = Math.max(maxX, points[i].x)
+            maxY = Math.max(maxY, points[i].y)
+        }
+        return Qt.rect(minX, minY, maxX - minX, maxY - minY)
+    }
+
+    function normalizePoints(points, x, y, w, h) {
+        var out = []
+        var dw = Math.max(w, 1)
+        var dh = Math.max(h, 1)
+        for (var i = 0; i < points.length; ++i)
+            out.push([(points[i].x - x) / dw, (points[i].y - y) / dh])
+        return out
+    }
+
+    function updateDrawPreview(type, startPt, endPt, pts) {
+        var lineLike = type === "line" || type === "arrow" || type === "freehand"
+        if (lineLike) {
+            var bbox = root.boundingRect(pts)
+            drawPreview.x = bbox.x
+            drawPreview.y = bbox.y
+            drawPreview.width = Math.max(bbox.width, 1)
+            drawPreview.height = Math.max(bbox.height, 1)
+            drawPreview.points = root.normalizePoints(pts, bbox.x, bbox.y, bbox.width, bbox.height)
+        } else {
+            drawPreview.x = Math.min(startPt.x, endPt.x)
+            drawPreview.y = Math.min(startPt.y, endPt.y)
+            drawPreview.width = Math.max(Math.abs(endPt.x - startPt.x), 1)
+            drawPreview.height = Math.max(Math.abs(endPt.y - startPt.y), 1)
+            drawPreview.points = []
+        }
+        drawPreview.shapeType = type
+        drawPreview.style = root.shapeStyleFor(type)
+        drawPreview.visible = true
+    }
+
+    function autoTitle(type) {
+        return root.typeDisplayName(type) + " " + Qt.formatTime(new Date(), "HH:mm")
+    }
+
+    function commitShape(type, startPt, endPt, pts) {
+        var x, y, w, h, points
+        var lineLike = type === "line" || type === "arrow" || type === "freehand"
+        if (lineLike) {
+            var bbox = root.boundingRect(pts)
+            x = bbox.x
+            y = bbox.y
+            w = bbox.width
+            h = bbox.height
+            points = root.normalizePoints(pts, x, y, w, h)
+        } else {
+            x = Math.min(startPt.x, endPt.x)
+            y = Math.min(startPt.y, endPt.y)
+            w = Math.abs(endPt.x - startPt.x)
+            h = Math.abs(endPt.y - startPt.y)
+            points = []
+        }
+        if (w < Theme.dragThreshold && h < Theme.dragThreshold)
+            return -1
+        var shapeId = repo.addShape(root.selectedBoardId, type, x, y, w, h, 0,
+            JSON.stringify(points), JSON.stringify(root.shapeStyleFor(type)))
+        if (shapeId > 0 && root.asItem)
+            repo.convertShapeToEntity(shapeId, root.autoTitle(type))
+        return shapeId
     }
 
     function refreshOptions() {
@@ -251,6 +365,103 @@ Rectangle {
             }
         }
 
+        // Toolbar gambar — baris kedua
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingSmall
+
+            SquareToolButton {
+                objectName: "panLockToggle"
+                Layout.preferredWidth: 56
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: root.tool === "pan" ? qsTr("Pan") : qsTr("Kunci")
+                active: root.tool !== "pan"
+                onClicked: root.tool = root.tool === "pan" ? root.lastTool : "pan"
+            }
+
+            SquareToolButton {
+                objectName: "toolSelectButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u25B8"
+                active: root.tool === "select"
+                onClicked: root.setTool("select")
+            }
+
+            SquareToolButton {
+                objectName: "toolRectangleButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u25AD"
+                active: root.tool === "rectangle"
+                onClicked: root.setTool("rectangle")
+            }
+
+            SquareToolButton {
+                objectName: "toolEllipseButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u25CB"
+                active: root.tool === "ellipse"
+                onClicked: root.setTool("ellipse")
+            }
+
+            SquareToolButton {
+                objectName: "toolTriangleButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u25B3"
+                active: root.tool === "triangle"
+                onClicked: root.setTool("triangle")
+            }
+
+            SquareToolButton {
+                objectName: "toolLineButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u2571"
+                active: root.tool === "line"
+                onClicked: root.setTool("line")
+            }
+
+            SquareToolButton {
+                objectName: "toolArrowButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u2192"
+                active: root.tool === "arrow"
+                onClicked: root.setTool("arrow")
+            }
+
+            SquareToolButton {
+                objectName: "toolFreehandButton"
+                Layout.preferredWidth: Theme.smallControlHeight
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: "\u270E"
+                active: root.tool === "freehand"
+                onClicked: root.setTool("freehand")
+            }
+
+            Item { Layout.fillWidth: true }
+
+            SquareToolButton {
+                objectName: "asItemToggle"
+                Layout.preferredWidth: 64
+                Layout.preferredHeight: Theme.smallControlHeight
+                text: qsTr("As Item")
+                active: root.asItem
+                onClicked: root.asItem = !root.asItem
+            }
+
+            Text {
+                text: root.asItem ? qsTr("Bentuk baru langsung jadi Item") : ""
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeCaption
+                color: Theme.colorMuted
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
         // Chips board — kotak
         Row {
             id: chipsBar
@@ -277,6 +488,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            interactive: root.tool === "pan"
             contentWidth: canvasContent.width * root.zoom
             contentHeight: canvasContent.height * root.zoom
             boundsBehavior: Flickable.DragAndOvershootBounds
@@ -307,6 +519,56 @@ Rectangle {
                     color: "transparent"
                     border.color: Theme.colorBorder
                     border.width: Theme.borderWidth
+                }
+
+                MouseArea {
+                    id: drawLayer
+                    anchors.fill: parent
+                    visible: root.isDrawTool(root.tool)
+                    enabled: root.isDrawTool(root.tool)
+                    cursorShape: root.isDrawTool(root.tool) ? Qt.CrossCursor : Qt.ArrowCursor
+                    acceptedButtons: Qt.LeftButton
+
+                    onPressed: (mouse) => {
+                        var p = drawLayer.mapToItem(canvasContent, mouse.x, mouse.y)
+                        root.drawing = true
+                        root.drawType = root.tool
+                        root.drawStart = Qt.point(p.x, p.y)
+                        root.drawPoints = [Qt.point(p.x, p.y)]
+                        root.updateDrawPreview(root.drawType, root.drawStart, p, root.drawPoints)
+                    }
+
+                    onPositionChanged: (mouse) => {
+                        if (!root.drawing)
+                            return
+                        var p = drawLayer.mapToItem(canvasContent, mouse.x, mouse.y)
+                        if (root.drawType === "freehand") {
+                            var last = root.drawPoints[root.drawPoints.length - 1]
+                            if (Math.hypot(p.x - last.x, p.y - last.y) < 3)
+                                return
+                            root.drawPoints.push(Qt.point(p.x, p.y))
+                        } else {
+                            root.drawPoints = [root.drawStart, Qt.point(p.x, p.y)]
+                        }
+                        root.updateDrawPreview(root.drawType, root.drawStart, p, root.drawPoints)
+                    }
+
+                    onReleased: (mouse) => {
+                        if (!root.drawing)
+                            return
+                        root.drawing = false
+                        drawPreview.visible = false
+                        var p = drawLayer.mapToItem(canvasContent, mouse.x, mouse.y)
+                        if (root.drawType === "freehand") {
+                            var last = root.drawPoints[root.drawPoints.length - 1]
+                            if (Math.hypot(p.x - last.x, p.y - last.y) >= 3)
+                                root.drawPoints.push(Qt.point(p.x, p.y))
+                        } else {
+                            root.drawPoints = [root.drawStart, Qt.point(p.x, p.y)]
+                        }
+                        root.commitShape(root.drawType, root.drawStart, p, root.drawPoints)
+                        root.drawPoints = []
+                    }
                 }
 
                 Repeater {
@@ -370,6 +632,14 @@ Rectangle {
                             }
                         }
                     }
+                }
+
+                ShapeItem {
+                    id: drawPreview
+                    objectName: "shapePreview"
+                    visible: false
+                    shapeType: root.drawType
+                    style: root.shapeStyleFor(root.drawType)
                 }
 
                 Repeater {
