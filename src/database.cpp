@@ -80,7 +80,28 @@ bool initSchema()
         }
         q.exec(QStringLiteral("PRAGMA user_version = 3"));
     }
-    return schemaVersion() == 3;
+    if (schemaVersion() < 4) {
+        QSqlQuery q(handle());
+        if (!q.exec(QStringLiteral(
+                "CREATE TABLE canvas_shapes ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "board_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,"
+                "type TEXT NOT NULL,"
+                "x REAL NOT NULL,"
+                "y REAL NOT NULL,"
+                "width REAL NOT NULL,"
+                "height REAL NOT NULL,"
+                "rotation REAL NOT NULL DEFAULT 0,"
+                "points TEXT,"
+                "style TEXT NOT NULL,"
+                "created_at TEXT NOT NULL,"
+                "linked_item_id INTEGER REFERENCES items(id) ON DELETE SET NULL)"))) {
+            qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+            return false;
+        }
+        q.exec(QStringLiteral("PRAGMA user_version = 4"));
+    }
+    return schemaVersion() == 4;
 }
 
 bool createV1Schema()

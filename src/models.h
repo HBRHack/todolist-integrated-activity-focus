@@ -56,4 +56,19 @@ struct NodePos
     QPointF pos;
 };
 
+struct CanvasShape
+{
+    int id = -1;
+    int boardId = -1; // -1 = global (NULL di DB)
+    QString type;
+    double x = 0.0;
+    double y = 0.0;
+    double width = 0.0;
+    double height = 0.0;
+    double rotation = 0.0;
+    QString pointsJson;
+    QString styleJson;
+    int linkedItemId = -1; // -1 = anotasi bebas (belum ter-link)
+};
+
 }

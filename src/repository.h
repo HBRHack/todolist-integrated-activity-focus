@@ -53,6 +53,16 @@ public:
     Q_INVOKABLE void deleteEdge(int edgeId);
     Q_INVOKABLE bool edgeExists(int itemId, int parentItemId) const;
 
+    QVector<CanvasShape> shapes() const;
+    Q_INVOKABLE int addShape(int boardId, const QString &type, double x, double y,
+                double width, double height, double rotation,
+                const QString &pointsJson, const QString &styleJson);
+    Q_INVOKABLE void updateShapePosition(int shapeId, double x, double y,
+                double width, double height, double rotation);
+    Q_INVOKABLE void deleteShape(int shapeId);
+    Q_INVOKABLE QVariantList shapeList(int boardId) const;
+    Q_INVOKABLE int convertShapeToEntity(int shapeId, const QString &title);
+
     Q_INVOKABLE QPointF nodePosition(int itemId) const;
     Q_INVOKABLE void setNodePosition(int itemId, const QPointF &pos);
     Q_INVOKABLE bool hasNodePosition(int itemId) const;

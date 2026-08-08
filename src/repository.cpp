@@ -9,6 +9,9 @@
 #include <QDate>
 #include <QVariant>
 #include <QVariantMap>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 
 Repository::Repository(QObject *parent)
     : QObject(parent)
@@ -522,6 +525,146 @@ void Repository::deleteEdge(int edgeId)
     q.bindValue(QStringLiteral(":id"), edgeId);
     if (q.exec())
         emit changed();
+}
+
+QVector<CanvasShape> Repository::shapes() const
+{
+    QVector<CanvasShape> out;
+    QSqlQuery q(db::handle());
+    q.exec(QStringLiteral(
+        "SELECT id, board_id, type, x, y, width, height, rotation, "
+        "points, style, linked_item_id FROM canvas_shapes ORDER BY id"));
+    while (q.next()) {
+        CanvasShape s;
+        s.id = q.value(0).toInt();
+        s.boardId = q.value(1).isNull() ? -1 : q.value(1).toInt();
+        s.type = q.value(2).toString();
+        s.x = q.value(3).toDouble();
+        s.y = q.value(4).toDouble();
+        s.width = q.value(5).toDouble();
+        s.height = q.value(6).toDouble();
+        s.rotation = q.value(7).toDouble();
+        s.pointsJson = q.value(8).toString();
+        s.styleJson = q.value(9).toString();
+        s.linkedItemId = q.value(10).isNull() ? -1 : q.value(10).toInt();
+        out.append(s);
+    }
+    return out;
+}
+
+int Repository::addShape(int boardId, const QString &type, double x, double y,
+                         double width, double height, double rotation,
+                         const QString &pointsJson, const QString &styleJson)
+{
+    const QString points = pointsJson.isEmpty() ? QStringLiteral("[]") : pointsJson;
+    const QString style = styleJson.isEmpty() ? QStringLiteral("{}") : styleJson;
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "INSERT INTO canvas_shapes (board_id, type, x, y, width, height, rotation, "
+        "points, style, created_at) "
+        "VALUES (NULLIF(:b, -1), :t, :x, :y, :w, :h, :r, :p, :s, :now)"));
+    q.bindValue(QStringLiteral(":b"), boardId);
+    q.bindValue(QStringLiteral(":t"), type);
+    q.bindValue(QStringLiteral(":x"), x);
+    q.bindValue(QStringLiteral(":y"), y);
+    q.bindValue(QStringLiteral(":w"), width);
+    q.bindValue(QStringLiteral(":h"), height);
+    q.bindValue(QStringLiteral(":r"), rotation);
+    q.bindValue(QStringLiteral(":p"), points);
+    q.bindValue(QStringLiteral(":s"), style);
+    q.bindValue(QStringLiteral(":now"), now());
+    if (!q.exec())
+        return -1;
+    const int id = q.lastInsertId().toInt();
+    emit changed();
+    return id;
+}
+
+void Repository::updateShapePosition(int shapeId, double x, double y,
+                                     double width, double height, double rotation)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "UPDATE canvas_shapes SET x = :x, y = :y, width = :w, height = :h, "
+        "rotation = :r WHERE id = :id"));
+    q.bindValue(QStringLiteral(":x"), x);
+    q.bindValue(QStringLiteral(":y"), y);
+    q.bindValue(QStringLiteral(":w"), width);
+    q.bindValue(QStringLiteral(":h"), height);
+    q.bindValue(QStringLiteral(":r"), rotation);
+    q.bindValue(QStringLiteral(":id"), shapeId);
+    if (q.exec())
+        emit changed();
+}
+
+void Repository::deleteShape(int shapeId)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("DELETE FROM canvas_shapes WHERE id = :id"));
+    q.bindValue(QStringLiteral(":id"), shapeId);
+    if (q.exec())
+        emit changed();
+}
+
+QVariantList Repository::shapeList(int boardId) const
+{
+    QVariantList out;
+    const QVector<CanvasShape> all = shapes();
+    for (const CanvasShape &s : all) {
+        if (boardId != -1 && s.boardId != boardId)
+            continue;
+        QVariantMap m;
+        m.insert(QStringLiteral("id"), s.id);
+        m.insert(QStringLiteral("boardId"), s.boardId);
+        m.insert(QStringLiteral("type"), s.type);
+        m.insert(QStringLiteral("x"), s.x);
+        m.insert(QStringLiteral("y"), s.y);
+        m.insert(QStringLiteral("width"), s.width);
+        m.insert(QStringLiteral("height"), s.height);
+        m.insert(QStringLiteral("rotation"), s.rotation);
+        m.insert(QStringLiteral("points"), QJsonDocument::fromJson(s.pointsJson.toUtf8()).array().toVariantList());
+        m.insert(QStringLiteral("style"), QJsonDocument::fromJson(s.styleJson.toUtf8()).object().toVariantMap());
+        m.insert(QStringLiteral("linkedItemId"), s.linkedItemId);
+        out.append(m);
+    }
+    return out;
+}
+
+int Repository::convertShapeToEntity(int shapeId, const QString &title)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "SELECT board_id, x, y, width, height, linked_item_id FROM canvas_shapes WHERE id = :id"));
+    q.bindValue(QStringLiteral(":id"), shapeId);
+    q.exec();
+    if (!q.next() || !q.value(5).isNull())
+        return -1;
+
+    const int shapeBoardId = q.value(0).isNull() ? -1 : q.value(0).toInt();
+    const double cx = q.value(1).toDouble() + q.value(3).toDouble() / 2.0;
+    const double cy = q.value(2).toDouble() + q.value(4).toDouble() / 2.0;
+
+    const int itemId = addItem(title, QString(), QDate::currentDate());
+    if (itemId <= 0)
+        return -1;
+
+    if (shapeBoardId != -1) {
+        QSqlQuery u(db::handle());
+        u.prepare(QStringLiteral("UPDATE items SET board_id = :b WHERE id = :i"));
+        u.bindValue(QStringLiteral(":b"), shapeBoardId);
+        u.bindValue(QStringLiteral(":i"), itemId);
+        u.exec();
+    }
+    setNodePosition(itemId, QPointF(cx, cy));
+
+    QSqlQuery l(db::handle());
+    l.prepare(QStringLiteral("UPDATE canvas_shapes SET linked_item_id = :i WHERE id = :id"));
+    l.bindValue(QStringLiteral(":i"), itemId);
+    l.bindValue(QStringLiteral(":id"), shapeId);
+    if (!l.exec())
+        return -1;
+    emit changed();
+    return itemId;
 }
 
 QPointF Repository::nodePosition(int itemId) const

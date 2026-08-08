@@ -48,7 +48,7 @@ class TstBackend : public QObject
 
 private slots:
     void init();
-    void schemaIsV3();
+    void schemaIsV4();
     void seedCreatesUmumBoard();
     void settingsPersistAcrossReopen();
     void repositoryColumnCrud();
@@ -76,6 +76,12 @@ private slots:
     void mapProxyFiltersByBoard();
     void edgeCrudRoundtrip();
     void edgePersistsAcrossReopen();
+    void shapeCrudRoundtrip();
+    void shapeGlobalVsBoardFilter();
+    void shapePersistsAcrossReopen();
+    void boardDeleteCascadesShapes();
+    void convertShapeToEntityRoundtrip();
+    void itemDeleteUnlinksShape();
     void dateParserGrammar();
     void nodeLayoutProducesLevelsWithoutOverlap();
     void nodeLayoutPersistsPositionsViaRepo();
@@ -97,9 +103,9 @@ void TstBackend::init()
     QVERIFY(db::seedDefaults());
 }
 
-void TstBackend::schemaIsV3()
+void TstBackend::schemaIsV4()
 {
-    QCOMPARE(db::schemaVersion(), 3);
+    QCOMPARE(db::schemaVersion(), 4);
 }
 
 void TstBackend::seedCreatesUmumBoard()
@@ -926,6 +932,223 @@ void TstBackend::edgePersistsAcrossReopen()
     QCOMPARE(es.first().itemId, a);
     QCOMPARE(es.first().parentItemId, b);
     QVERIFY(repo2.edgeExists(a, b));
+}
+
+void TstBackend::shapeCrudRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+
+    QSignalSpy spy(&repo, &Repository::changed);
+
+    const int shapeId = repo.addShape(boardId, QStringLiteral("rectangle"),
+        10.0, 20.0, 100.0, 50.0, 0.0,
+        QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\",\"fill\":\"surface\",\"strokeWidth\":2}"));
+    QVERIFY(shapeId > 0);
+    QCOMPARE(spy.count(), 1);
+
+    auto list = repo.shapeList(boardId);
+    QCOMPARE(list.size(), 1);
+    const QVariantMap m = list.first().toMap();
+    QCOMPARE(m.value(QStringLiteral("id")).toInt(), shapeId);
+    QCOMPARE(m.value(QStringLiteral("boardId")).toInt(), boardId);
+    QCOMPARE(m.value(QStringLiteral("type")).toString(), QStringLiteral("rectangle"));
+    QCOMPARE(m.value(QStringLiteral("x")).toDouble(), 10.0);
+    QCOMPARE(m.value(QStringLiteral("y")).toDouble(), 20.0);
+    QCOMPARE(m.value(QStringLiteral("width")).toDouble(), 100.0);
+    QCOMPARE(m.value(QStringLiteral("height")).toDouble(), 50.0);
+    QCOMPARE(m.value(QStringLiteral("rotation")).toDouble(), 0.0);
+    QCOMPARE(m.value(QStringLiteral("linkedItemId")).toInt(), -1);
+    // points/style di-parse dari JSON di sisi C++
+    QCOMPARE(m.value(QStringLiteral("points")).toList().size(), 0);
+    QCOMPARE(m.value(QStringLiteral("style")).toMap()
+                 .value(QStringLiteral("stroke")).toString(), QStringLiteral("border"));
+
+    // updateShapePosition memperbarui geometri + rotation
+    repo.updateShapePosition(shapeId, 99.5, 88.0, 60.0, 30.0, 45.0);
+    QCOMPARE(spy.count(), 2);
+    list = repo.shapeList(boardId);
+    QCOMPARE(list.size(), 1);
+    const QVariantMap moved = list.first().toMap();
+    QCOMPARE(moved.value(QStringLiteral("x")).toDouble(), 99.5);
+    QCOMPARE(moved.value(QStringLiteral("y")).toDouble(), 88.0);
+    QCOMPARE(moved.value(QStringLiteral("width")).toDouble(), 60.0);
+    QCOMPARE(moved.value(QStringLiteral("height")).toDouble(), 30.0);
+    QCOMPARE(moved.value(QStringLiteral("rotation")).toDouble(), 45.0);
+
+    repo.deleteShape(shapeId);
+    QCOMPARE(spy.count(), 3);
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+}
+
+void TstBackend::shapeGlobalVsBoardFilter()
+{
+    Repository repo;
+    const int boardA = repo.boards().first().id;
+    const int boardB = repo.addBoard(QStringLiteral("Shape Bantu"));
+
+    const int localId = repo.addShape(boardA, QStringLiteral("ellipse"),
+        1.0, 2.0, 10.0, 20.0, 0.0, QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"accent\"}"));
+    const int globalId = repo.addShape(-1, QStringLiteral("line"),
+        5.0, 6.0, 30.0, 0.0, 15.0,
+        QStringLiteral("[[0,0],[1,1]]"),
+        QStringLiteral("{\"stroke\":\"accent\"}"));
+    QVERIFY(localId > 0 && globalId > 0);
+
+    // Global (-1) → semua bentuk
+    QCOMPARE(repo.shapeList(-1).size(), 2);
+
+    // Per board → hanya bentuk milik board tsb
+    auto listA = repo.shapeList(boardA);
+    QCOMPARE(listA.size(), 1);
+    QCOMPARE(listA.first().toMap().value(QStringLiteral("id")).toInt(), localId);
+
+    QCOMPARE(repo.shapeList(boardB).size(), 0);
+
+    // Bentuk global dilaporkan boardId -1 dan points ter-parse
+    bool foundGlobal = false;
+    for (const QVariant &v : repo.shapeList(-1)) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toInt() != globalId)
+            continue;
+        foundGlobal = true;
+        QCOMPARE(m.value(QStringLiteral("boardId")).toInt(), -1);
+        QCOMPARE(m.value(QStringLiteral("rotation")).toDouble(), 15.0);
+        const QVariantList pts = m.value(QStringLiteral("points")).toList();
+        QCOMPARE(pts.size(), 2);
+        QCOMPARE(pts.at(0).toList().at(0).toDouble(), 0.0);
+        QCOMPARE(pts.at(1).toList().at(1).toDouble(), 1.0);
+    }
+    QVERIFY2(foundGlobal, "bentuk global tidak ada di shapeList(-1)");
+}
+
+void TstBackend::shapePersistsAcrossReopen()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int shapeId = repo.addShape(boardId, QStringLiteral("freehand"),
+        -30.0, -25.0, 200.0, 150.0, 90.0,
+        QStringLiteral("[[0.1,0.2],[0.5,0.8]]"),
+        QStringLiteral("{\"stroke\":\"border\"}"));
+    QVERIFY(shapeId > 0);
+
+    db::close();
+    QString error;
+    QVERIFY2(db::open(path, &error), qPrintable(error));
+    QVERIFY(db::initSchema());
+
+    Repository repo2;
+    const auto list = repo2.shapeList(boardId);
+    QCOMPARE(list.size(), 1);
+    const QVariantMap m = list.first().toMap();
+    QCOMPARE(m.value(QStringLiteral("id")).toInt(), shapeId);
+    QCOMPARE(m.value(QStringLiteral("type")).toString(), QStringLiteral("freehand"));
+    QCOMPARE(m.value(QStringLiteral("x")).toDouble(), -30.0);
+    QCOMPARE(m.value(QStringLiteral("rotation")).toDouble(), 90.0);
+    QCOMPARE(m.value(QStringLiteral("points")).toList().size(), 2);
+    QCOMPARE(m.value(QStringLiteral("style")).toMap()
+                 .value(QStringLiteral("stroke")).toString(), QStringLiteral("border"));
+}
+
+void TstBackend::boardDeleteCascadesShapes()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int boardB = repo.addBoard(QStringLiteral("Bentuk Hilang"));
+
+    const int localB = repo.addShape(boardId, QStringLiteral("rectangle"),
+        1.0, 1.0, 10.0, 10.0, 0.0,
+        QStringLiteral("[]"), QStringLiteral("{\"stroke\":\"border\"}"));
+    const int globalB = repo.addShape(-1, QStringLiteral("arrow"),
+        2.0, 2.0, 20.0, 20.0, 0.0,
+        QStringLiteral("[]"), QStringLiteral("{\"stroke\":\"accent\"}"));
+    QVERIFY(localB > 0 && globalB > 0);
+
+    // Hapus board → bentuk miliknya ikut terhapus (CASCADE), bentuk global selamat
+    repo.deleteBoard(boardId);
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+    bool globalAlive = false;
+    for (const QVariant &v : repo.shapeList(-1)) {
+        if (v.toMap().value(QStringLiteral("id")).toInt() == globalB)
+            globalAlive = true;
+    }
+    QVERIFY(globalAlive);
+
+    repo.addShape(boardB, QStringLiteral("ellipse"), 3.0, 3.0, 5.0, 5.0, 0.0,
+                  QStringLiteral("[]"), QStringLiteral("{\"stroke\":\"border\"}"));
+    repo.deleteBoard(boardB);
+    QCOMPARE(repo.shapeList(boardB).size(), 0);
+}
+
+void TstBackend::convertShapeToEntityRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+
+    const int shapeId = repo.addShape(boardId, QStringLiteral("rectangle"),
+        100.0, 200.0, 50.0, 40.0, 0.0,
+        QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\",\"fill\":\"surface\"}"));
+    QVERIFY(shapeId > 0);
+
+    const int itemId = repo.convertShapeToEntity(shapeId, QStringLiteral("Kotak area"));
+    QVERIFY(itemId > 0);
+
+    // Item baru: board = board bentuk, kolom kosong (Inbox), due hari ini
+    bool itemOk = false;
+    for (const ItemData &it : repo.items()) {
+        if (it.id != itemId)
+            continue;
+        itemOk = true;
+        QCOMPARE(it.title, QStringLiteral("Kotak area"));
+        QCOMPARE(it.boardId, boardId);
+        QCOMPARE(it.columnId, -1);
+        QCOMPARE(it.dueDate, QDate::currentDate());
+    }
+    QVERIFY2(itemOk, "item hasil konversi tidak ditemukan");
+
+    // Posisi node = tengah bentuk
+    QCOMPARE(repo.nodePosition(itemId), QPointF(125.0, 220.0));
+
+    // Bentuk ter-link (linked_item_id terisi)
+    const QVariantMap shape = repo.shapeList(boardId).first().toMap();
+    QCOMPARE(shape.value(QStringLiteral("linkedItemId")).toInt(), itemId);
+
+    // Konversi ulang ditolak (bentuk sudah ter-link)
+    QCOMPARE(repo.convertShapeToEntity(shapeId, QStringLiteral("dua kali")), -1);
+}
+
+void TstBackend::itemDeleteUnlinksShape()
+{
+    Repository repo;
+
+    // Konversi bentuk global → item masuk Inbox (board NULL / -1)
+    const int shapeId = repo.addShape(-1, QStringLiteral("triangle"),
+        10.0, 10.0, 60.0, 60.0, 0.0,
+        QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\",\"fill\":\"surface\"}"));
+    const int itemId = repo.convertShapeToEntity(shapeId, QStringLiteral("Global"));
+    QVERIFY(itemId > 0);
+
+    auto shapeOf = [&repo, &shapeId]() {
+        for (const QVariant &v : repo.shapeList(-1)) {
+            const QVariantMap m = v.toMap();
+            if (m.value(QStringLiteral("id")).toInt() == shapeId)
+                return m;
+        }
+        return QVariantMap();
+    };
+    QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), itemId);
+    for (const ItemData &it : repo.items())
+        if (it.id == itemId)
+            QCOMPARE(it.boardId, -1);
+
+    // Hapus Item dari view lain → bentuk kembali anotasi bebas (SET NULL)
+    repo.deleteItem(itemId);
+    QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), -1);
+    QCOMPARE(repo.shapeList(-1).size(), 1); // bentuk bertahan
 }
 
 void TstBackend::dateParserGrammar()
