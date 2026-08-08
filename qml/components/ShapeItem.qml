@@ -10,6 +10,14 @@ Item {
     property var points: []
     property var style: ({})
     property bool linked: false
+    property bool selected: false
+    property bool interactive: false
+
+    readonly property bool editable: root.interactive && !root.linked
+
+    signal selectRequested()
+    signal actionsRequested()
+    signal geometryCommitted(real x, real y, real w, real h, real rotation)
 
     transformOrigin: Item.Center
 
@@ -202,6 +210,18 @@ Item {
 
     Rectangle {
         z: 10
+        visible: root.selected && root.editable
+        x: -3
+        y: -3
+        width: root.drawW + 6
+        height: root.drawH + 6
+        color: "transparent"
+        border.color: Theme.colorAccent
+        border.width: 3
+    }
+
+    Rectangle {
+        z: 10
         visible: root.linked
         x: Theme.spacingTiny
         y: Theme.spacingTiny
@@ -220,6 +240,153 @@ Item {
             font.pixelSize: Theme.fontSizeCaption
             font.bold: true
             color: Theme.colorSlabText
+        }
+    }
+
+    MouseArea {
+        id: shapePress
+        anchors.fill: parent
+        enabled: root.editable
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        preventStealing: true
+        cursorShape: Qt.PointingHandCursor
+
+        property point pressPos: Qt.point(0, 0)
+        property point startPos: Qt.point(0, 0)
+        property bool moving: false
+
+        onPressed: (mouse) => {
+            if (mouse.button === Qt.RightButton) {
+                root.actionsRequested()
+                return
+            }
+            root.selectRequested()
+            pressPos = Qt.point(mouse.x, mouse.y)
+            startPos = Qt.point(root.x, root.y)
+            moving = false
+        }
+
+        onPositionChanged: (mouse) => {
+            if (!pressed || mouse.button !== Qt.LeftButton)
+                return
+            if (!moving) {
+                var dx = mouse.x - pressPos.x
+                var dy = mouse.y - pressPos.y
+                if (Math.abs(dx) <= Theme.dragThreshold && Math.abs(dy) <= Theme.dragThreshold)
+                    return
+                moving = true
+            }
+            root.x = startPos.x + (mouse.x - pressPos.x)
+            root.y = startPos.y + (mouse.y - pressPos.y)
+        }
+
+        onReleased: (mouse) => {
+            if (moving && mouse.button === Qt.LeftButton) {
+                moving = false
+                root.geometryCommitted(root.x, root.y, root.drawW, root.drawH, root.rotation)
+            }
+        }
+    }
+
+    Rectangle {
+        id: resizeHandle
+        z: 20
+        visible: root.selected && root.editable
+        x: root.width - 8
+        y: root.height - 8
+        width: 16
+        height: 16
+        objectName: "shapeResizeHandle_" + root.shapeId
+        color: Theme.colorSurface
+        border.color: Theme.colorAccent
+        border.width: 2
+
+        MouseArea {
+            id: resizeMouse
+            anchors.fill: parent
+            preventStealing: true
+            cursorShape: Qt.SizeFDiagCursor
+
+            property point pressLocal: Qt.point(0, 0)
+            property real startW: 0
+            property real startH: 0
+
+            onPressed: (mouse) => {
+                pressLocal = root.mapFromItem(resizeHandle, mouse.x, mouse.y)
+                startW = root.width
+                startH = root.height
+            }
+
+            onPositionChanged: (mouse) => {
+                if (!pressed)
+                    return
+                var p = root.mapFromItem(resizeHandle, mouse.x, mouse.y)
+                root.width = Math.max(Theme.dragThreshold, startW + p.x - pressLocal.x)
+                root.height = Math.max(Theme.dragThreshold, startH + p.y - pressLocal.y)
+            }
+
+            onReleased: (mouse) => {
+                root.geometryCommitted(root.x, root.y, root.width, root.height, root.rotation)
+            }
+        }
+    }
+
+    Rectangle {
+        id: rotateStem
+        z: 20
+        visible: root.selected && root.editable
+        x: root.width / 2 - 1
+        y: -Theme.spacingLarge
+        width: 2
+        height: Theme.spacingLarge
+        color: Theme.colorAccent
+    }
+
+    Rectangle {
+        id: rotateHandle
+        z: 20
+        visible: root.selected && root.editable
+        x: root.width / 2 - 8
+        y: -Theme.spacingLarge - 16
+        width: 16
+        height: 16
+        objectName: "shapeRotateHandle_" + root.shapeId
+        color: Theme.colorSurface
+        border.color: Theme.colorAccent
+        border.width: 2
+
+        MouseArea {
+            id: rotateMouse
+            anchors.fill: parent
+            preventStealing: true
+            cursorShape: Qt.PointingHandCursor
+
+            property real startRotation: 0
+            property real startAngle: 0
+
+            function worldPointerAngle() {
+                var q = rotateMouse.mapToItem(root.parent, rotateMouse.mouseX, rotateMouse.mouseY)
+                return Math.atan2(q.y - (root.y + root.height / 2),
+                                  q.x - (root.x + root.width / 2)) * 180 / Math.PI
+            }
+
+            onPressed: (mouse) => {
+                startRotation = root.rotation
+                startAngle = rotateMouse.worldPointerAngle()
+            }
+
+            onPositionChanged: (mouse) => {
+                if (!pressed)
+                    return
+                var r = startRotation + rotateMouse.worldPointerAngle() - startAngle
+                if (mouse.modifiers & Qt.ShiftModifier)
+                    r = Math.round(r / 15) * 15
+                root.rotation = r
+            }
+
+            onReleased: (mouse) => {
+                root.geometryCommitted(root.x, root.y, root.width, root.height, root.rotation)
+            }
         }
     }
 }

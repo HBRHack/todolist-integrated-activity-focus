@@ -31,6 +31,9 @@ Rectangle {
     property string drawType: ""
     property var drawStart: Qt.point(0, 0)
     property var drawPoints: []
+    property int selectedShapeId: -1
+    property int shapePopupId: -1
+    property bool shapePopupLocked: false
 
     readonly property int canvasWidth: 3000
     readonly property int canvasHeight: 3000
@@ -113,6 +116,7 @@ Rectangle {
 
     function selectBoard(id) {
         root.selectedBoardId = id
+        root.clearSelection()
         applyFilter()
     }
 
@@ -155,6 +159,8 @@ Rectangle {
             root.lastTool = t
             root.tool = t
         }
+        if (t !== "select")
+            root.clearSelection()
     }
 
     function typeDisplayName(type) {
@@ -247,6 +253,48 @@ Rectangle {
         if (shapeId > 0 && root.asItem)
             repo.convertShapeToEntity(shapeId, root.autoTitle(type))
         return shapeId
+    }
+
+    function shapeById(id) {
+        for (var i = 0; i < root.shapes.length; ++i) {
+            if (root.shapes[i].id === id)
+                return root.shapes[i]
+        }
+        return null
+    }
+
+    function selectShape(id) {
+        var s = root.shapeById(id)
+        if (s === null || s.linkedItemId > 0)
+            return
+        root.selectedShapeId = id
+    }
+
+    function clearSelection() {
+        root.selectedShapeId = -1
+    }
+
+    function commitShapeEdit(id, x, y, w, h, rotation) {
+        var s = root.shapeById(id)
+        if (s === null || s.linkedItemId > 0)
+            return
+        repo.updateShapePosition(id, x, y, w, h, rotation)
+    }
+
+    function deleteSelectedShape() {
+        if (root.selectedShapeId === -1)
+            return
+        repo.deleteShape(root.selectedShapeId)
+        root.selectedShapeId = -1
+    }
+
+    function openShapeActions(id) {
+        var s = root.shapeById(id)
+        if (s === null)
+            return
+        root.shapePopupId = id
+        root.shapePopupLocked = s.linkedItemId > 0
+        shapePopup.open()
     }
 
     function refreshOptions() {
@@ -504,6 +552,11 @@ Rectangle {
                 }
             }
 
+            Keys.onDeletePressed: (event) => {
+                root.deleteSelectedShape()
+                event.accepted = true
+            }
+
             Item {
                 id: canvasContent
                 width: root.canvasWidth
@@ -571,6 +624,19 @@ Rectangle {
                     }
                 }
 
+                MouseArea {
+                    id: shapeDeselectLayer
+                    anchors.fill: parent
+                    visible: root.tool === "select"
+                    enabled: root.tool === "select"
+                    cursorShape: Qt.PointingHandCursor
+
+                    onPressed: (mouse) => {
+                        canvas.forceActiveFocus()
+                        root.clearSelection()
+                    }
+                }
+
                 Repeater {
                     id: shapesRepeater
                     model: root.shapes
@@ -587,6 +653,20 @@ Rectangle {
                         points: modelData.points
                         style: modelData.style
                         linked: modelData.linkedItemId > 0
+                        selected: root.selectedShapeId === modelData.id
+                        interactive: root.tool === "select"
+
+                        onSelectRequested: {
+                            root.selectShape(modelData.id)
+                            canvas.forceActiveFocus()
+                        }
+
+                        onActionsRequested: {
+                            root.selectShape(modelData.id)
+                            root.openShapeActions(modelData.id)
+                        }
+
+                        onGeometryCommitted: root.commitShapeEdit(modelData.id, x, y, w, h, rotation)
                     }
                 }
 
@@ -896,6 +976,114 @@ Rectangle {
             var child = repo.itemInfo(e.itemId)
             var parent = repo.itemInfo(e.parentItemId)
             edgePopupInfo.text = qsTr("%1 → %2").arg(child.title).arg(parent.title)
+        }
+    }
+
+    Popup {
+        id: shapePopup
+        parent: root
+        modal: true
+        width: 420
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Edit bentuk")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Text {
+                id: shapePopupType
+                Layout.fillWidth: true
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.colorMuted
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: Theme.borderWidth
+                color: Theme.colorBorder
+            }
+
+            TextField {
+                id: shapeTitleField
+                objectName: "shapeTitleField"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.controlHeight
+                verticalAlignment: Text.AlignVCenter
+                padding: 8
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.colorText
+                selectByMouse: true
+                placeholderText: qsTr("Judul Item…")
+                placeholderTextColor: Theme.colorMuted
+                background: Rectangle {
+                    radius: 0
+                    color: Theme.colorSurfaceAlt
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                }
+            }
+
+            PrimaryButton {
+                id: shapeToItemBtn
+                objectName: "shapeToItemBtn"
+                Layout.fillWidth: true
+                text: qsTr("Jadikan Item")
+                highlighted: true
+                disabled: root.shapePopupLocked
+                onClicked: {
+                    repo.convertShapeToEntity(root.shapePopupId, shapeTitleField.text)
+                    root.clearSelection()
+                    shapePopup.close()
+                }
+            }
+
+            PrimaryButton {
+                id: shapeDeleteBtn
+                objectName: "shapeDeleteBtn"
+                Layout.fillWidth: true
+                text: qsTr("Hapus")
+                onClicked: {
+                    repo.deleteShape(root.shapePopupId)
+                    root.clearSelection()
+                    shapePopup.close()
+                }
+            }
+
+            PrimaryButton {
+                Layout.fillWidth: true
+                text: qsTr("Batal")
+                onClicked: shapePopup.close()
+            }
+        }
+
+        onOpened: {
+            var s = root.shapeById(root.shapePopupId)
+            if (s === null)
+                return
+            shapePopupType.text = root.typeDisplayName(s.type)
+            shapeTitleField.text = root.autoTitle(s.type)
         }
     }
 }

@@ -325,4 +325,143 @@ TestCase {
         h.comp.destroy()
         cleanupBoard()
     }
+
+    function makeShape(boardIdForShape)
+    {
+        return repo.addShape(boardIdForShape, "rectangle", 400, 200, 120, 64, 0, "[]",
+            '{"stroke":"border","fill":"surface","strokeWidth":2}')
+    }
+
+    function cleanupShape(shapeId)
+    {
+        repo.deleteShape(shapeId)
+        cleanupBoard()
+    }
+
+    function test_shapeSelectAndEditCommitCallsUpdateShapePosition()
+    {
+        makeData()
+        var shapeId = makeShape(boardId)
+        verify(shapeId > 0, "addShape gagal")
+        var h = createMap()
+
+        verify(findChild(h.view, "shape_" + shapeId) !== null, "bentuk tidak dirender")
+
+        // Seleksi via seam yang sama dengan press handle: selectShape → selectedShapeId
+        h.view.selectShape(shapeId)
+        wait(100)
+        compare(h.view.selectedShapeId, shapeId, "selectShape tidak memilih bentuk")
+        var s = findChild(h.view, "shape_" + shapeId)
+        verify(s.selected === true, "delegate tidak menandai bentuk terpilih")
+
+        // commit jalur release drag/resize/rotate: updateShapePosition
+        h.view.commitShapeEdit(shapeId, 500, 380, 200, 100, 30)
+        wait(100)
+
+        var list = repo.shapeList(boardId)
+        compare(list.length, 1, "tidak ada bentuk setelah commit")
+        var m = list[0]
+        compare(Math.round(m.x), 500, "x tidak tersimpan")
+        compare(Math.round(m.y), 380, "y tidak tersimpan")
+        compare(Math.round(m.width), 200, "width tidak tersimpan")
+        compare(Math.round(m.height), 100, "height tidak tersimpan")
+        compare(Math.round(m.rotation), 30, "rotation tidak tersimpan")
+
+        // Re-select masih berfungsi setelah refresh (Bentuk berubah dari repo)
+        h.view.selectShape(shapeId)
+        verify(h.view.selectedShapeId === shapeId)
+        s = findChild(h.view, "shape_" + shapeId)
+        verify(s.selected === true, "highlight hilang setelah refresh")
+
+        // Hapus via tombol seam: Delete key memanggil repo.deleteShape
+        h.view.commitShapeEdit(shapeId, 700, 600, 120, 64, 0)
+        wait(100)
+        h.view.deleteSelectedShape()
+        wait(100)
+        verify(repo.shapeList(boardId).length === 0, "bentuk tidak terhapus dari repo")
+        verify(findChild(h.view, "shape_" + shapeId) === null, "bentuk masih dirender setelah hapus")
+
+        h.view.destroy()
+        h.comp.destroy()
+        cleanupBoard()
+    }
+
+    function test_shapeConvertCreatesNodeAndLocksShape()
+    {
+        makeData()
+        var shapeId = makeShape(boardId)
+        verify(shapeId > 0)
+        var h = createMap()
+
+        h.view.openShapeActions(shapeId)
+        wait(100)
+
+        var field = findChild(h.view, "shapeTitleField")
+        verify(field !== null, "field judul tidak muncul")
+        var convertBtn = findChild(h.view, "shapeToItemBtn")
+        verify(convertBtn !== null, "tombol Jadikan Item tidak muncul")
+        field.text = "Bentuk Jadi Item"
+        convertBtn.clicked()
+        wait(200)
+
+        // node muncul di posisi tengah bentuk
+        var m = repo.shapeList(boardId)
+        verify(m.length === 1, "bentuk hilang setelah convert")
+        var itemId = m[0].linkedItemId
+        verify(itemId > 0, "bentuk tidak ter-link ke Item")
+        var node = findChild(h.view, "node_" + itemId)
+        verify(node !== null, "node tidak muncul setelah convert")
+        var p = repo.nodePosition(itemId)
+        compare(Math.round(p.x), Math.round(400 + 120 / 2), "node tidak di tengah bentuk (x)")
+        compare(Math.round(p.y), Math.round(200 + 64 / 2), "node tidak di tengah bentuk (y)")
+        compare(repo.itemInfo(itemId).title, "Bentuk Jadi Item", "judul item tidak dari field")
+
+        // Bentuk terkunci: badge, tidak bisa dipilih/convert ulang, tidak bisa diedit
+        var s = findChild(h.view, "shape_" + shapeId)
+        verify(s !== null)
+        verify(s.linked === true, "bentuk tidak ter-link")
+        h.view.selectShape(shapeId)
+        compare(h.view.selectedShapeId, -1, "bentuk ter-link masih bisa dipilih")
+        h.view.commitShapeEdit(shapeId, 9999, 9999, 10, 10, 0)
+        wait(100)
+        m = repo.shapeList(boardId)[0]
+        verify(Math.round(m.x) !== 9999, "bentuk ter-link masih bisa diedit")
+        verify(findChild(h.view, "shapeLinkedBadge_" + shapeId) !== null, "badge Item tidak muncul")
+
+        h.view.destroy()
+        h.comp.destroy()
+        repo.deleteItem(itemId)
+        cleanupBoard()
+    }
+
+    function test_itemDeleteUnblocksShape()
+    {
+        makeData()
+        var shapeId = makeShape(boardId)
+        var itemId = repo.convertShapeToEntity(shapeId, "Bentuk tapus")
+        verify(itemId > 0)
+        var h = createMap()
+
+        var s = findChild(h.view, "shape_" + shapeId)
+        verify(s !== null && s.linked === true, "bentuk tidak terkunci awal")
+
+        repo.deleteItem(itemId)
+        wait(200)
+
+        verify(repo.shapeList(boardId).length === 1, "bentuk ikut terhapus saat item dihapus")
+        s = findChild(h.view, "shape_" + shapeId)
+        verify(s !== null, "bentuk hilang dari kanvas setelah item dihapus")
+        verify(s.linked === false, "bentuk tidak kembali anotasi bebas setelah hapus Item")
+
+        h.view.selectShape(shapeId)
+        compare(h.view.selectedShapeId, shapeId, "bentuk bebas tidak bisa dipilih lagi")
+        h.view.commitShapeEdit(shapeId, 800, 640, 90, 40, 0)
+        wait(100)
+        var m = repo.shapeList(boardId)[0]
+        compare(Math.round(m.x), 800, "bentuk bebas tidak bisa diedit lagi")
+
+        h.view.destroy()
+        h.comp.destroy()
+        cleanupShape(shapeId)
+    }
 }
