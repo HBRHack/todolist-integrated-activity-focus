@@ -413,79 +413,94 @@ Rectangle {
             }
         }
 
-        // Toolbar gambar — baris kedua
+        // Toolbar gambar — baris kedua (tombol 48px + tooltip)
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
 
             SquareToolButton {
                 objectName: "panLockToggle"
-                Layout.preferredWidth: 56
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: root.tool === "pan" ? qsTr("Pan") : qsTr("Kunci")
+                tooltip: root.tool === "pan" ? qsTr("Pan / geser kanvas") : qsTr("Kunci alat aktif")
                 active: root.tool !== "pan"
                 onClicked: root.tool = root.tool === "pan" ? root.lastTool : "pan"
             }
 
             SquareToolButton {
                 objectName: "toolSelectButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u25B8"
+                glyphSize: 20
+                tooltip: qsTr("Pilih")
                 active: root.tool === "select"
                 onClicked: root.setTool("select")
             }
 
             SquareToolButton {
                 objectName: "toolRectangleButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u25AD"
+                glyphSize: 20
+                tooltip: qsTr("Kotak")
                 active: root.tool === "rectangle"
                 onClicked: root.setTool("rectangle")
             }
 
             SquareToolButton {
                 objectName: "toolEllipseButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u25CB"
+                glyphSize: 20
+                tooltip: qsTr("Lingkaran")
                 active: root.tool === "ellipse"
                 onClicked: root.setTool("ellipse")
             }
 
             SquareToolButton {
                 objectName: "toolTriangleButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u25B3"
+                glyphSize: 20
+                tooltip: qsTr("Segitiga")
                 active: root.tool === "triangle"
                 onClicked: root.setTool("triangle")
             }
 
             SquareToolButton {
                 objectName: "toolLineButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u2571"
+                glyphSize: 20
+                tooltip: qsTr("Garis")
                 active: root.tool === "line"
                 onClicked: root.setTool("line")
             }
 
             SquareToolButton {
                 objectName: "toolArrowButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u2192"
+                glyphSize: 20
+                tooltip: qsTr("Panah")
                 active: root.tool === "arrow"
                 onClicked: root.setTool("arrow")
             }
 
             SquareToolButton {
                 objectName: "toolFreehandButton"
-                Layout.preferredWidth: Theme.smallControlHeight
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 text: "\u270E"
+                glyphSize: 20
+                tooltip: qsTr("Coretan")
                 active: root.tool === "freehand"
                 onClicked: root.setTool("freehand")
             }
@@ -495,10 +510,33 @@ Rectangle {
             SquareToolButton {
                 objectName: "asItemToggle"
                 Layout.preferredWidth: 64
-                Layout.preferredHeight: Theme.smallControlHeight
+                Layout.preferredHeight: 48
                 text: qsTr("As Item")
+                tooltip: qsTr("Bentuk baru langsung jadi Item")
                 active: root.asItem
                 onClicked: root.asItem = !root.asItem
+            }
+
+            SquareToolButton {
+                objectName: "mapUndoBtn"
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+                text: "\u21B6"
+                glyphSize: 20
+                tooltip: qsTr("Undo")
+                disabled: !repo.canUndo
+                onClicked: repo.undo()
+            }
+
+            SquareToolButton {
+                objectName: "mapRedoBtn"
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+                text: "\u21B7"
+                glyphSize: 20
+                tooltip: qsTr("Redo")
+                disabled: !repo.canRedo
+                onClicked: repo.redo()
             }
 
             Text {
@@ -557,6 +595,20 @@ Rectangle {
                 event.accepted = true
             }
 
+            Shortcut {
+                // Scoped: hanya aktif saat kanvas punya fokus → tidak bentrok
+                // dengan Ctrl+Z internal TextField di popup (jendela terpisah).
+                context: Qt.WidgetWithChildrenShortcut
+                sequence: "Ctrl+Z"
+                onActivated: repo.undo()
+            }
+
+            Shortcut {
+                context: Qt.WidgetWithChildrenShortcut
+                sequence: "Ctrl+Y"
+                onActivated: repo.redo()
+            }
+
             Item {
                 id: canvasContent
                 width: root.canvasWidth
@@ -583,6 +635,7 @@ Rectangle {
                     acceptedButtons: Qt.LeftButton
 
                     onPressed: (mouse) => {
+                        canvas.forceActiveFocus()
                         var p = drawLayer.mapToItem(canvasContent, mouse.x, mouse.y)
                         root.drawing = true
                         root.drawType = root.tool
@@ -805,6 +858,7 @@ Rectangle {
                             property point nodeStart: Qt.point(0, 0)
 
                             onPressed: (mouse) => {
+                                canvas.forceActiveFocus()
                                 pressPos = Qt.point(mouse.x, mouse.y)
                                 nodeStart = Qt.point(nodeRoot.x, nodeRoot.y)
                                 dragActive = false

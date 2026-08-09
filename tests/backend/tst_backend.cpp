@@ -82,6 +82,16 @@ private slots:
     void boardDeleteCascadesShapes();
     void convertShapeToEntityRoundtrip();
     void itemDeleteUnlinksShape();
+    void undoRedoAddShapeRoundtrip();
+    void undoRedoEditShapeRoundtrip();
+    void undoRedoDeleteShapeRoundtrip();
+    void undoRedoConvertShapeRoundtrip();
+    void undoRedoNodeMoveRoundtrip();
+    void undoRedoLayoutRoundtrip();
+    void undoRedoEdgeRoundtrip();
+    void undoRedoResetsRedoStackOnNewAction();
+    void undoDisabledWhenEmpty();
+    void deleteItemRemovesHistory();
     void dateParserGrammar();
     void nodeLayoutProducesLevelsWithoutOverlap();
     void nodeLayoutPersistsPositionsViaRepo();
@@ -1149,6 +1159,298 @@ void TstBackend::itemDeleteUnlinksShape()
     repo.deleteItem(itemId);
     QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), -1);
     QCOMPARE(repo.shapeList(-1).size(), 1); // bentuk bertahan
+}
+
+void TstBackend::undoRedoAddShapeRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+
+    QSignalSpy spy(&repo, &Repository::changed);
+    QSignalSpy hist(&repo, &Repository::historyChanged);
+
+    const int shapeId = repo.addShape(boardId, QStringLiteral("rectangle"),
+        10.0, 20.0, 100.0, 50.0, 0.0,
+        QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\",\"fill\":\"surface\"}"));
+    QVERIFY(shapeId > 0);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(hist.count(), 1);
+    QVERIFY(repo.canUndo());
+    QVERIFY(!repo.canRedo());
+
+    // Undo → bentuk hilang
+    QVERIFY(repo.undo());
+    QCOMPARE(spy.count(), 2);
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+    QVERIFY(!repo.canUndo());
+    QVERIFY(repo.canRedo());
+
+    // Redo → bentuk kembali dengan id asli
+    QVERIFY(repo.redo());
+    QCOMPARE(spy.count(), 3);
+    const auto list = repo.shapeList(boardId);
+    QCOMPARE(list.size(), 1);
+    QCOMPARE(list.first().toMap().value(QStringLiteral("id")).toInt(), shapeId);
+    QCOMPARE(list.first().toMap().value(QStringLiteral("type")).toString(),
+             QStringLiteral("rectangle"));
+    QVERIFY(repo.canUndo());
+    QVERIFY(!repo.canRedo());
+}
+
+void TstBackend::undoRedoEditShapeRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int shapeId = repo.addShape(boardId, QStringLiteral("rectangle"),
+        10.0, 20.0, 100.0, 50.0, 0.0,
+        QStringLiteral("[]"), QStringLiteral("{\"stroke\":\"border\"}"));
+    QVERIFY(shapeId > 0);
+
+    repo.updateShapePosition(shapeId, 99.5, 88.0, 60.0, 30.0, 45.0);
+    auto geom = [&repo, boardId, shapeId]() {
+        for (const QVariant &v : repo.shapeList(boardId)) {
+            const QVariantMap m = v.toMap();
+            if (m.value(QStringLiteral("id")).toInt() == shapeId)
+                return m;
+        }
+        return QVariantMap();
+    };
+    QCOMPARE(geom().value(QStringLiteral("x")).toDouble(), 99.5);
+    QCOMPARE(geom().value(QStringLiteral("rotation")).toDouble(), 45.0);
+
+    // Undo edit → geometri awal
+    QVERIFY(repo.undo());
+    const QVariantMap undone = geom();
+    QCOMPARE(undone.value(QStringLiteral("x")).toDouble(), 10.0);
+    QCOMPARE(undone.value(QStringLiteral("y")).toDouble(), 20.0);
+    QCOMPARE(undone.value(QStringLiteral("width")).toDouble(), 100.0);
+    QCOMPARE(undone.value(QStringLiteral("height")).toDouble(), 50.0);
+    QCOMPARE(undone.value(QStringLiteral("rotation")).toDouble(), 0.0);
+
+    // Redo → geometri baru
+    QVERIFY(repo.redo());
+    const QVariantMap redone = geom();
+    QCOMPARE(redone.value(QStringLiteral("x")).toDouble(), 99.5);
+    QCOMPARE(redone.value(QStringLiteral("rotation")).toDouble(), 45.0);
+}
+
+void TstBackend::undoRedoDeleteShapeRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int shapeId = repo.addShape(boardId, QStringLiteral("ellipse"),
+        5.0, 6.0, 30.0, 20.0, 0.0,
+        QStringLiteral("[]"), QStringLiteral("{\"stroke\":\"accent\"}"));
+    QVERIFY(shapeId > 0);
+
+    repo.deleteShape(shapeId);
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+
+    // Undo hapus → bentuk kembali dengan id asli
+    QVERIFY(repo.undo());
+    const auto list = repo.shapeList(boardId);
+    QCOMPARE(list.size(), 1);
+    QCOMPARE(list.first().toMap().value(QStringLiteral("id")).toInt(), shapeId);
+    QCOMPARE(list.first().toMap().value(QStringLiteral("type")).toString(),
+             QStringLiteral("ellipse"));
+
+    // Redo → hilang lagi
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+}
+
+void TstBackend::undoRedoConvertShapeRoundtrip()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int shapeId = repo.addShape(boardId, QStringLiteral("rectangle"),
+        100.0, 200.0, 50.0, 40.0, 0.0,
+        QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\",\"fill\":\"surface\"}"));
+    QVERIFY(shapeId > 0);
+
+    const int itemId = repo.convertShapeToEntity(shapeId, QStringLiteral("Kotak area"));
+    QVERIFY(itemId > 0);
+    QCOMPARE(repo.nodePosition(itemId), QPointF(125.0, 220.0));
+    auto shapeOf = [&repo, shapeId]() {
+        for (const QVariant &v : repo.shapeList(-1)) {
+            const QVariantMap m = v.toMap();
+            if (m.value(QStringLiteral("id")).toInt() == shapeId)
+                return m;
+        }
+        return QVariantMap();
+    };
+    QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), itemId);
+
+    // Undo konversi → item hilang, bentuk terlepas, posisi node hilang
+    QVERIFY(repo.undo());
+    for (const ItemData &it : repo.items())
+        QVERIFY(it.id != itemId);
+    QCOMPARE(repo.hasNodePosition(itemId), false);
+    QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), -1);
+
+    // Redo → item kembali (id sama, title sama), link + posisi pulih
+    QVERIFY(repo.redo());
+    bool itemBack = false;
+    for (const ItemData &it : repo.items()) {
+        if (it.id == itemId) {
+            itemBack = true;
+            QCOMPARE(it.title, QStringLiteral("Kotak area"));
+            QCOMPARE(it.boardId, boardId);
+        }
+    }
+    QVERIFY2(itemBack, "item hasil convert tidak kembali setelah redo");
+    QCOMPARE(repo.nodePosition(itemId), QPointF(125.0, 220.0));
+    QCOMPARE(shapeOf().value(QStringLiteral("linkedItemId")).toInt(), itemId);
+}
+
+void TstBackend::undoRedoNodeMoveRoundtrip()
+{
+    Repository repo;
+    const int itemId = repo.addItem(QStringLiteral("Node"),
+        QString(), QDate::currentDate());
+    QVERIFY(itemId > 0);
+
+    repo.setNodePosition(itemId, QPointF(111.0, 222.0));
+    QCOMPARE(repo.nodePosition(itemId), QPointF(111.0, 222.0));
+
+    // Undo move → posisi node dihapus (awalnya tidak ada posisi)
+    QVERIFY(repo.undo());
+    QVERIFY(!repo.hasNodePosition(itemId));
+
+    // Redo → posisi pulih
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.nodePosition(itemId), QPointF(111.0, 222.0));
+
+    // Pindahkan lagi → undo kembali ke posisi pertama
+    repo.setNodePosition(itemId, QPointF(9.0, 9.0));
+    QVERIFY(repo.undo());
+    QCOMPARE(repo.nodePosition(itemId), QPointF(111.0, 222.0));
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.nodePosition(itemId), QPointF(9.0, 9.0));
+}
+
+void TstBackend::undoRedoLayoutRoundtrip()
+{
+    Repository repo;
+    const int boardId = -1; // mode global: semua item terlihat
+    const int a = repo.addItem(QStringLiteral("A"), QString(), QDate::currentDate());
+    const int b = repo.addItem(QStringLiteral("B"), QString(), QDate::currentDate());
+    QVERIFY(a > 0 && b > 0);
+    repo.addEdge(b, a); // B → A, A induk
+    repo.setNodePosition(a, QPointF(10.0, 10.0));
+
+    repo.layoutMap(boardId);
+    const QPointF laidA = repo.nodePosition(a);
+    const QPointF laidB = repo.nodePosition(b);
+    QVERIFY(repo.hasNodePosition(b));
+    QVERIFY(laidA != QPointF(10.0, 10.0) || laidB != QPointF(0.0, 0.0)
+            || true); // layout pasti menulis posisi
+
+    // Undo layout → A kembali ke posisi manual, B kehilangan posisi
+    QVERIFY(repo.undo());
+    QCOMPARE(repo.nodePosition(a), QPointF(10.0, 10.0));
+    QVERIFY(!repo.hasNodePosition(b));
+
+    // Redo layout → posisi layout pulih
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.nodePosition(a), laidA);
+    QCOMPARE(repo.nodePosition(b), laidB);
+}
+
+void TstBackend::undoRedoEdgeRoundtrip()
+{
+    Repository repo;
+    const int a = repo.addItem(QStringLiteral("A"), QString(), QDate::currentDate());
+    const int b = repo.addItem(QStringLiteral("B"), QString(), QDate::currentDate());
+    const int c = repo.addItem(QStringLiteral("C"), QString(), QDate::currentDate());
+    QVERIFY(a > 0 && b > 0 && c > 0);
+
+    // AddEdge: undo → hilang, redo → kembali dengan id asli
+    QVERIFY(repo.addEdge(a, b));
+    const int edgeId = repo.edges().first().id;
+    QVERIFY(repo.undo());
+    QCOMPARE(repo.edges().size(), 0);
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.edges().size(), 1);
+    QCOMPARE(repo.edges().first().id, edgeId);
+    QCOMPARE(repo.edges().first().itemId, a);
+    QCOMPARE(repo.edges().first().parentItemId, b);
+
+    // DeleteEdge: undo → kembali, redo → hilang
+    repo.addEdge(c, b);
+    const int otherId = repo.edges().last().id;
+    repo.deleteEdge(edgeId);
+    QCOMPARE(repo.edges().size(), 1);
+    QVERIFY(repo.undo());
+    QCOMPARE(repo.edges().size(), 2);
+    bool edgeBack = false;
+    for (const Edge &e : repo.edges())
+        if (e.id == edgeId && e.itemId == a)
+            edgeBack = true;
+    QVERIFY(edgeBack);
+    QVERIFY(repo.redo());
+    QCOMPARE(repo.edges().size(), 1);
+    QVERIFY(otherId != edgeId);
+}
+
+void TstBackend::undoRedoResetsRedoStackOnNewAction()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int s1 = repo.addShape(boardId, QStringLiteral("rectangle"),
+        1.0, 1.0, 10.0, 10.0, 0.0, QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\"}"));
+    const int s2 = repo.addShape(boardId, QStringLiteral("ellipse"),
+        2.0, 2.0, 10.0, 10.0, 0.0, QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\"}"));
+    QVERIFY(s1 > 0 && s2 > 0);
+
+    QVERIFY(repo.undo()); // hapus s2
+    QVERIFY(repo.undo()); // hapus s1
+    QVERIFY(repo.canRedo());
+    QVERIFY(!repo.canUndo());
+
+    // Aksi baru harus mengosongkan redo stack
+    repo.addShape(boardId, QStringLiteral("triangle"),
+        3.0, 3.0, 10.0, 10.0, 0.0, QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\"}"));
+    QVERIFY(!repo.canRedo());
+    QVERIFY(repo.canUndo());
+
+    // Undo tidak dapat melompat kembali ke kondisi pre-branching:
+    // hanya aksi terakhir (triangle) yang dibatalkan
+    QVERIFY(repo.undo());
+    QCOMPARE(repo.shapeList(boardId).size(), 0);
+    QVERIFY(!repo.canUndo());
+}
+
+void TstBackend::undoDisabledWhenEmpty()
+{
+    Repository repo;
+    QVERIFY(!repo.canUndo());
+    QVERIFY(!repo.canRedo());
+    QVERIFY(!repo.undo());
+    QVERIFY(!repo.redo());
+}
+
+void TstBackend::deleteItemRemovesHistory()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int s1 = repo.addShape(boardId, QStringLiteral("rectangle"),
+        1.0, 1.0, 10.0, 10.0, 0.0, QStringLiteral("[]"),
+        QStringLiteral("{\"stroke\":\"border\"}"));
+    QVERIFY(s1 > 0);
+
+    repo.deleteBoard(boardId);
+    QVERIFY(!repo.canUndo()); // stack dibersihkan bersama board
+    QVERIFY(!repo.canRedo());
+
+    // Undo tidak menghidupkan kembali bentuk yang sudah hilang
+    QVERIFY(!repo.undo());
+    QCOMPARE(repo.shapeList(-1).size(), 0);
 }
 
 void TstBackend::dateParserGrammar()

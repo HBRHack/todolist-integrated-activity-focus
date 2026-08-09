@@ -30,6 +30,14 @@
     </message>
 </context>
 <context>
+    <name>ShapeItem</name>
+    <message>
+        <location filename="qml/components/ShapeItem.qml" line="238"/>
+        <source>Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Theme</name>
     <message>
         <location filename="qml/theme/Theme.qml" line="17"/>
@@ -231,47 +239,47 @@
 <context>
     <name>ViewKanban</name>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="190"/>
+        <location filename="qml/views/ViewKanban.qml" line="234"/>
         <source>Tambah Board</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="368"/>
+        <location filename="qml/views/ViewKanban.qml" line="412"/>
         <source>Tambah Kolom</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="373"/>
+        <location filename="qml/views/ViewKanban.qml" line="417"/>
         <source>+ Kolom</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="647"/>
+        <location filename="qml/views/ViewKanban.qml" line="733"/>
         <source>Belum ada Item</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="675"/>
+        <location filename="qml/views/ViewKanban.qml" line="761"/>
         <source>Belum ada Board. Klik &apos;+&apos; untuk membuat Board baru.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="706"/>
+        <location filename="qml/views/ViewKanban.qml" line="792"/>
         <source>Setup Awal — Mode Peta</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="717"/>
+        <location filename="qml/views/ViewKanban.qml" line="803"/>
         <source>Pilih cara Peta menampilkan Board/Item. Pilihan tersimpan dan bisa diganti kapan saja lewat dropdown di area Peta.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="726"/>
+        <location filename="qml/views/ViewKanban.qml" line="812"/>
         <source>Satu Papan Global</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewKanban.qml" line="738"/>
+        <location filename="qml/views/ViewKanban.qml" line="824"/>
         <source>Multiple Papan</source>
         <translation type="unfinished"></translation>
     </message>
@@ -317,59 +325,162 @@
 <context>
     <name>ViewMap</name>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="56"/>
+        <location filename="qml/views/ViewMap.qml" line="68"/>
         <source>Semua</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="145"/>
+        <location filename="qml/views/ViewMap.qml" line="168"/>
+        <location filename="qml/views/ViewMap.qml" line="448"/>
+        <source>Kotak</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="169"/>
+        <location filename="qml/views/ViewMap.qml" line="459"/>
+        <source>Lingkaran</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="170"/>
+        <location filename="qml/views/ViewMap.qml" line="470"/>
+        <source>Segitiga</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="171"/>
+        <location filename="qml/views/ViewMap.qml" line="481"/>
+        <source>Garis</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="172"/>
+        <location filename="qml/views/ViewMap.qml" line="492"/>
+        <source>Panah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="173"/>
+        <location filename="qml/views/ViewMap.qml" line="503"/>
+        <source>Coretan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="313"/>
         <source>Inbox</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="187"/>
+        <location filename="qml/views/ViewMap.qml" line="356"/>
         <source>Peta</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="199"/>
+        <location filename="qml/views/ViewMap.qml" line="368"/>
         <source>Gulir roda untuk zoom · seret area kosong untuk geser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="209"/>
+        <location filename="qml/views/ViewMap.qml" line="378"/>
         <source>Susun rapi</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="218"/>
+        <location filename="qml/views/ViewMap.qml" line="387"/>
         <source>Satu Papan Global</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="218"/>
+        <location filename="qml/views/ViewMap.qml" line="387"/>
         <source>Multiple Papan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="509"/>
+        <location filename="qml/views/ViewMap.qml" line="425"/>
+        <source>Pan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="425"/>
+        <source>Kunci</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="426"/>
+        <source>Pan / geser kanvas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="426"/>
+        <source>Kunci alat aktif</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="437"/>
+        <source>Pilih</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="514"/>
+        <source>As Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="515"/>
+        <location filename="qml/views/ViewMap.qml" line="543"/>
+        <source>Bentuk baru langsung jadi Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="526"/>
+        <source>Undo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="537"/>
+        <source>Redo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="939"/>
         <source>Belum ada Item di peta. Tambahkan Item dari Inbox atau view lain.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="554"/>
-        <location filename="qml/views/ViewMap.qml" line="575"/>
+        <location filename="qml/views/ViewMap.qml" line="984"/>
+        <location filename="qml/views/ViewMap.qml" line="1005"/>
         <source>Hapus koneksi</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="585"/>
+        <location filename="qml/views/ViewMap.qml" line="1015"/>
+        <location filename="qml/views/ViewMap.qml" line="1130"/>
         <source>Batal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="qml/views/ViewMap.qml" line="602"/>
+        <location filename="qml/views/ViewMap.qml" line="1032"/>
         <source>%1 → %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="1059"/>
+        <source>Edit bentuk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="1092"/>
+        <source>Judul Item…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="1106"/>
+        <source>Jadikan Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="qml/views/ViewMap.qml" line="1120"/>
+        <source>Hapus</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

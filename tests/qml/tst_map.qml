@@ -338,6 +338,88 @@ TestCase {
         cleanupBoard()
     }
 
+    function test_undoRedoButtonsDisabledStates()
+    {
+        makeData()
+        var h = createMap()
+
+        var undoBtn = findChild(h.view, "mapUndoBtn")
+        var redoBtn = findChild(h.view, "mapRedoBtn")
+        verify(undoBtn !== null, "tombol Undo tidak ada")
+        verify(redoBtn !== null, "tombol Redo tidak ada")
+        verify(!repo.canUndo && !repo.canRedo, "stack riwayat tidak kosong di awal")
+        verify(undoBtn.disabled === true, "undo tidak disabled saat stack kosong")
+        verify(redoBtn.disabled === true, "redo tidak disabled saat stack kosong")
+
+        var shapeId = makeShape(boardId)
+        wait(200)
+        verify(repo.canUndo, "addShape tidak tercatat di riwayat")
+        verify(undoBtn.disabled === false, "undo masih disabled setelah addShape")
+        verify(redoBtn.disabled === true, "redo tidak disabled setelah addShape")
+
+        // Undo via tombol → bentuk hilang, tombol saling membalik
+        undoBtn.clicked()
+        wait(200)
+        verify(findChild(h.view, "shape_" + shapeId) === null, "bentuk masih dirender setelah undo")
+        verify(undoBtn.disabled === true && redoBtn.disabled === false,
+               "state tombol tidak membalik setelah undo")
+
+        // Redo via tombol → bentuk balik
+        redoBtn.clicked()
+        wait(200)
+        verify(repo.shapeList(boardId).length === 1, "bentuk tidak kembali setelah redo")
+        verify(findChild(h.view, "shape_" + shapeId) !== null, "bentuk tidak dirender setelah redo")
+
+        h.view.destroy()
+        h.comp.destroy()
+        cleanupShape(shapeId)
+    }
+
+    function test_undoRedoRestoresNodeAndEdge()
+    {
+        makeData()
+        var shapeId = makeShape(boardId)
+        var itemId = repo.convertShapeToEntity(shapeId, "Bentuk undo")
+        verify(itemId > 0, "convert gagal")
+        var a = repo.quickAdd("edge anak")
+        var b = repo.quickAdd("edge induk")
+        repo.setNodePosition(a, Qt.point(400, 300))
+        repo.setNodePosition(b, Qt.point(900, 300))
+        verify(repo.addEdge(a, b), "edge tidak tersimpan")
+
+        var h = createMap()
+        var undoBtn = findChild(h.view, "mapUndoBtn")
+        verify(undoBtn !== null)
+
+        verify(findChild(h.view, "node_" + itemId) !== null, "node hasil convert tidak muncul")
+        var edges = repo.edgeList()
+        verify(findChild(h.view, "edge_" + edges[0].id) !== null, "garis edge tidak dirender")
+
+        // Undo 1: hapus edge → garis hilang dari kanvas
+        undoBtn.clicked()
+        wait(200)
+        verify(repo.edgeList().length === 0, "edge tidak terhapus setelah undo")
+        verify(findChild(h.view, "edge_" + edges[0].id) === null, "garis masih dirender setelah undo edge")
+
+        // Undo berikutnya: konversi bentuk + beberapa move posisi node
+        // (setNodePosition ikut tercatat) → undo sampai node hasil convert hilang
+        for (var guard = 0; guard < 10 && findChild(h.view, "node_" + itemId) !== null; ++guard) {
+            undoBtn.clicked()
+            wait(150)
+        }
+        verify(findChild(h.view, "node_" + itemId) === null,
+               "node masih ada setelah undo convert (guard habis)")
+        var m = repo.shapeList(boardId)[0]
+        verify(m.linkedItemId <= 0, "bentuk tidak terlepas setelah undo convert")
+
+        h.view.destroy()
+        h.comp.destroy()
+        repo.deleteShape(shapeId)
+        repo.deleteItem(a)
+        repo.deleteItem(b)
+        cleanupBoard()
+    }
+
     function test_shapeSelectAndEditCommitCallsUpdateShapePosition()
     {
         makeData()

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "history.h"
 #include "models.h"
 
 #include <QObject>
@@ -12,6 +13,8 @@ using namespace PetaIde;
 class Repository : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool canUndo READ canUndo NOTIFY historyChanged)
+    Q_PROPERTY(bool canRedo READ canRedo NOTIFY historyChanged)
 
 public:
     explicit Repository(QObject *parent = nullptr);
@@ -68,11 +71,35 @@ public:
     Q_INVOKABLE bool hasNodePosition(int itemId) const;
     Q_INVOKABLE void layoutMap(int boardId);
 
+    bool canUndo() const { return m_history.canUndo(); }
+    bool canRedo() const { return m_history.canRedo(); }
+    Q_INVOKABLE bool undo();
+    Q_INVOKABLE bool redo();
+    Q_INVOKABLE void clearHistory() { m_history.clear(); emit historyChanged(); }
+
 signals:
     void changed();
+    void historyChanged();
 
 private:
     void normalizeColumnOrder(int columnId);
     QVector<int> itemIdsInColumn(int columnId) const;
     static QString now();
+
+    // Undo/redo kanvas Peta
+    void record(const CanvasHistory::Step &s);
+    QVariantMap shapeSnapshot(int shapeId) const;
+    QVariantMap itemSnapshot(int itemId) const;
+    QVariantMap edgeSnapshot(int edgeId) const;
+    bool positionSnapshot(int itemId, QVariantMap *out) const;
+    void applyStep(const CanvasHistory::Step &step, bool forward);
+    bool restoreShapeRow(const QVariantMap &m);
+    bool restoreItemRow(const QVariantMap &m);
+    bool restoreEdgeRow(const QVariantMap &m);
+    void upsertPosition(int itemId, double x, double y);
+    void removePosition(int itemId);
+
+    CanvasHistory m_history;
+    bool m_suppressHistory = false;
+    bool m_applyingHistory = false;
 };

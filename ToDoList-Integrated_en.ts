@@ -25,6 +25,13 @@
     </message>
 </context>
 <context>
+    <name>ShapeItem</name>
+    <message>
+        <source>Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Theme</name>
     <message>
         <source>Terang</source>
@@ -296,6 +303,82 @@
     <message>
         <source>%1 → %2</source>
         <translation>%1 → %2</translation>
+    </message>
+    <message>
+        <source>Kotak</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lingkaran</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Segitiga</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Garis</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Panah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Coretan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kunci</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pan / geser kanvas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kunci alat aktif</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pilih</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>As Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bentuk baru langsung jadi Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit bentuk</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Judul Item…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Jadikan Item</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hapus</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

@@ -24,6 +24,7 @@ SOURCES += \
         src/database.cpp \
         src/appsettings.cpp \
         src/repository.cpp \
+        src/history.cpp \
         src/itemmodel.cpp \
         src/inboxproxymodel.cpp \
         src/dateparser.cpp \
@@ -38,6 +39,7 @@ HEADERS += \
         src/database.h \
         src/appsettings.h \
         src/repository.h \
+        src/history.h \
         src/itemmodel.h \
         src/inboxproxymodel.h \
         src/dateparser.h \
