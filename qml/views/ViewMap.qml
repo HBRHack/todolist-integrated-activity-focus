@@ -38,6 +38,8 @@ Rectangle {
     readonly property int canvasWidth: 3000
     readonly property int canvasHeight: 3000
 
+    readonly property bool locked: appSettings.canvasLocked
+
     function clampZoom(z) {
         return Math.min(2.0, Math.max(0.5, z))
     }
@@ -429,6 +431,22 @@ Rectangle {
             }
 
             SquareToolButton {
+                objectName: "mapLockToggle"
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+                text: root.locked ? "Buka" : "Kunci"
+                glyphSize: 14
+                tooltip: root.locked ? qsTr("Buka kunci kanvas — boleh digeser lagi")
+                                     : qsTr("Kunci kanvas — tidak tergeser saat menggambar")
+                active: root.locked
+                onClicked: {
+                    appSettings.canvasLocked = !root.locked
+                    if (appSettings.canvasLocked && root.tool === "pan")
+                        root.tool = root.lastTool
+                }
+            }
+
+            SquareToolButton {
                 objectName: "toolSelectButton"
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
@@ -574,12 +592,14 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            interactive: root.tool === "pan"
+            // Kunci kanvas (isu 08): interactive=false → kanvas tidak tergeser
+            // saat menggambar di bagian tepi; edit & draw tetap jalan
+            interactive: !root.locked && root.tool === "pan"
             contentWidth: canvasContent.width * root.zoom
             contentHeight: canvasContent.height * root.zoom
             boundsBehavior: Flickable.DragAndOvershootBounds
-            ScrollBar.vertical: BrutalScrollBar {}
-            ScrollBar.horizontal: BrutalScrollBar {}
+            ScrollBar.vertical: BrutalScrollBar { scrollLocked: root.locked }
+            ScrollBar.horizontal: BrutalScrollBar { scrollLocked: root.locked }
 
             WheelHandler {
                 id: wheelZoom

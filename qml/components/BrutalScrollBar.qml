@@ -7,6 +7,11 @@ ScrollBar {
 
     property color handleColor: Theme.colorText
 
+    // Kunci kanvas (isu 08): scrollbar ikut mati saat QML parent memintanya
+    property bool scrollLocked: false
+
+    visible: !root.scrollLocked
+
     contentItem: Rectangle {
         implicitWidth: 8
         implicitHeight: 6

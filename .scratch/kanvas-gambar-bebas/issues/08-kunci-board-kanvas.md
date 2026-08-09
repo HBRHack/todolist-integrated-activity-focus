@@ -1,20 +1,21 @@
-# 08 — Kunci / buka kunci Board / kanvas Peta
+# 08 — Kunci / buka kunci board / kanvas Peta
 
-**What to build:** Board (kanvas Peta) bisa dikunci dan dibuka kuncinya. Saat terkunci, anotasi (bentuk) dan posisi node pada board itu tidak bisa diubah/diseret secara tidak sengaja — hanya bisa dilihat/dipan. Ini kelengkapan yang dirasa kurang dari mode Peta.
+**What to build:** Kanvas Peta bisa dikunci posisinya — tidak bisa digeser-geser (pan/scroll) sehingga tidak mengganggu saat menggambar di tepi. Edit & draw TETAP berjalan. Keputusan user: kunci murni untuk posisi kanvas, bukan read-only.
 
 **Blocked by:** None
 
-**Status:** in-progress
+**Status:** done
 
 ## Checklist
 
-- [ ] Keputusan desain: cakupan kunci — seluruh kanvas (global) vs per-board; apa yang terkunci (edit bentuk, drag node, buat edge, susun rapi, hapus, undo/redo?).
-- [ ] Cara user mengunci: tombol di toolbar Peta (icon gembok) + status terlihat (tooltip/teks aktif).
-- [ ] Saat terkunci: mouse area node/shape/edge non-aktif (tidak bisa drag, resize, rotate, buat edge); tool gambar boleh dipilih tapi drawing ditolak (atau toolbar dinonaktifkan).
-- [ ] Undo/redo tetap jalan atau ikut dikunci — putuskan.
-- [ ] Persistensi: status kunci disimpan per board (app_settings / kolom boards) sehingga bertahan setelah restart.
-- [ ] Backend test + QML test untuk perilaku kunci.
+- [x] Keputusan desain: kunci bersifat global satu kanvas Peta (app_settings `canvas_locked`), bukan per-board; yang dikunci HANYA pergerakan kanvas (`Flickable.interactive = false` + scrollbar disembunyikan), bukan editing.
+- [x] Cara user mengunci: tombol gembok di toolbar gambar (objectName `mapLockToggle`), teks Kunci/Buka, active saat terkunci, tooltip qsTr.
+- [x] Saat terkunci: kanvas tidak bisa digeser (drag pan) dan scrollbar mati; pan tool otomatis kembali ke tool terakhir saat dikunci. Draw, edit node, edge, susun rapi — semua tetap jalan.
+- [x] Persistensi: `AppSettings.canvasLocked` disimpan di app_settings, bertahan setelah restart.
+- [x] Backend test: `canvasLockPersistsAcrossReopen` (default false, idempotent, persist, bisa di-unlock). QML test tidak dibuat — keputusan user ("ga usah QML test").
 
 ## Komentar
 
-Keputusan user: fitur ini wajib — "kekurangan nih". Detail cakupan belum diputuskan (lihat checklist pertama).
+Keputusan user: "kunci maksudnya BISA EDITABLE TETAPI BOARDYA GABISA DIGERAK-GERAK, karena kalau kanvas bisa digeser akan mengganggu pas draw — DRAW TETAP BISA". Implementasi: `interactive: !locked && tool === "pan"` di Flickable + `scrollLocked` di `BrutalScrollBar`.
+
+Verifikasi: backend 50/50 PASS, smoke-run bersih.

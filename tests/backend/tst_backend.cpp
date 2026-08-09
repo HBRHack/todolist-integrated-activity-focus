@@ -51,6 +51,7 @@ private slots:
     void schemaIsV4();
     void seedCreatesUmumBoard();
     void settingsPersistAcrossReopen();
+    void canvasLockPersistsAcrossReopen();
     void repositoryColumnCrud();
     void columnColorPersists();
     void columnColorInvalidKeyFallsBackToAccent();
@@ -148,6 +149,27 @@ void TstBackend::settingsPersistAcrossReopen()
     AppSettings s2;
     QCOMPARE(s2.theme(), QStringLiteral("dark"));
     QCOMPARE(s2.inboxMode(), QStringLiteral("perboard"));
+}
+
+void TstBackend::canvasLockPersistsAcrossReopen()
+{
+    AppSettings s;
+    QVERIFY(!s.canvasLocked()); // default: tidak terkunci
+    s.setCanvasLocked(true);
+    QVERIFY(s.canvasLocked());
+    QSignalSpy spy(&s, &AppSettings::canvasLockedChanged);
+    s.setCanvasLocked(true); // idempoten
+    QCOMPARE(spy.count(), 0);
+
+    db::close();
+    QString err;
+    QVERIFY2(db::open(path, &err), qPrintable(err));
+    QVERIFY(db::initSchema());
+
+    AppSettings s2;
+    QVERIFY(s2.canvasLocked()); // bertahan setelah restart
+    s2.setCanvasLocked(false);
+    QVERIFY(!s2.canvasLocked());
 }
 
 void TstBackend::repositoryColumnCrud()

@@ -11,6 +11,7 @@ class AppSettings : public QObject
     Q_PROPERTY(QString mapMode READ mapMode WRITE setMapMode NOTIFY mapModeChanged)
     Q_PROPERTY(bool mapModeChosen READ mapModeChosen NOTIFY mapModeChosenChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
+    Q_PROPERTY(bool canvasLocked READ canvasLocked WRITE setCanvasLocked NOTIFY canvasLockedChanged)
 
 public:
     explicit AppSettings(QObject *parent = nullptr);
@@ -30,12 +31,16 @@ public:
     QString language() const;
     void setLanguage(const QString &value);
 
+    bool canvasLocked() const;
+    void setCanvasLocked(bool locked);
+
 signals:
     void themeChanged();
     void inboxModeChanged();
     void mapModeChanged();
     void mapModeChosenChanged();
     void languageChanged();
+    void canvasLockedChanged();
 
 private:
     QString value(const QString &key, const QString &fallback) const;

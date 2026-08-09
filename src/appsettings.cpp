@@ -77,6 +77,21 @@ void AppSettings::setLanguage(const QString &value)
     emit languageChanged();
 }
 
+bool AppSettings::canvasLocked() const
+{
+    return value(QStringLiteral("canvas_locked"), QStringLiteral("0"))
+        == QStringLiteral("1");
+}
+
+void AppSettings::setCanvasLocked(bool locked)
+{
+    if (locked == canvasLocked())
+        return;
+    setValue(QStringLiteral("canvas_locked"), locked ? QStringLiteral("1")
+                                                       : QStringLiteral("0"));
+    emit canvasLockedChanged();
+}
+
 QString AppSettings::value(const QString &key, const QString &fallback) const
 {
     QSqlQuery q(db::handle());
