@@ -110,12 +110,36 @@ ApplicationWindow {
                 StackLayout {
                     anchors.fill: parent
                     currentIndex: win.currentIndex
-                    ViewInbox {}
-                    ViewList {}
-                    ViewKanban {}
-                    ViewCalendar {}
-                    ViewMap {}
-                    ViewSettings {}
+                    Loader {
+                        active: win.currentIndex === 0
+                        asynchronous: true
+                        sourceComponent: ViewInbox {}
+                    }
+                    Loader {
+                        active: win.currentIndex === 1
+                        asynchronous: true
+                        sourceComponent: ViewList {}
+                    }
+                    Loader {
+                        active: win.currentIndex === 2
+                        asynchronous: true
+                        sourceComponent: ViewKanban {}
+                    }
+                    Loader {
+                        active: win.currentIndex === 3
+                        asynchronous: true
+                        sourceComponent: ViewCalendar {}
+                    }
+                    Loader {
+                        active: win.currentIndex === 4
+                        asynchronous: true
+                        sourceComponent: ViewMap {}
+                    }
+                    Loader {
+                        active: win.currentIndex === 5
+                        asynchronous: true
+                        sourceComponent: ViewSettings {}
+                    }
                 }
             }
         }
