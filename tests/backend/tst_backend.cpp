@@ -16,6 +16,12 @@
 #include "mapproxymodel.h"
 #include "nodelayout.h"
 
+// Tipe domain (Board/Column/ItemData/…) hidup di namespace PetaIde (models.h,
+// di-include via repository.h). Test memakai nama telanjang, jadi using di sini
+// (scope .cpp test — bukan header) sebagai pendamping cleanup header yang
+// menghapus "using namespace" dari repository.h.
+using namespace PetaIde;
+
 static QDate nextMonday(const QDate &base)
 {
     int diff = (1 - base.dayOfWeek() + 7) % 7;
