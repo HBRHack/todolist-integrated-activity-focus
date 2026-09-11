@@ -4,7 +4,7 @@ Konteks produk: aplikasi task manager native (Qt/QML + SQLite, offline-first) de
 
 ## Teknis
 
-Stack: **Qt 5.15.2** (C++17 + QML/Qt Quick), **qmake** (bukan CMake), SQLite via QtSql. Kode QML di `qml/`, C++ di `src/`, test di `tests/` (backend = QtTest, QML = QtQuickTest). Aturan skill wajib: lihat `docs/agents/qt-515.md`. Toolchain pinned ke `/home/banghbr/Qt515/5.15.2/gcc_64/bin/` (qmake, lrelease, runner) — bukan 5.5.1, bukan system Qt. Translasi di-render oleh lrelease Qt 5.15.2 (`QT_TOOL.lrelease.binary` di `.pro`).
+Stack: **Qt 5.15.2** (C++17 + QML/Qt Quick), **qmake** (bukan CMake), SQLite via QtSql. Kode QML di `qml/`, C++ di `src/`, test di `tests/` (backend = QtTest, QML = QtQuickTest). Aturan skill wajib: lihat `docs/agents/qt-515.md`. Toolchain: qmake + lrelease harus dari kit Qt 5.15.2 yang sama, ditunjuk lewat env var `$QT515_BIN` (Linux: `export QT515_BIN=$HOME/Qt/5.15.2/gcc_64/bin`; Windows: `set QT515_BIN=C:/Qt/5.15.2/mingw81_64/bin`) — bukan path hardcoded, bukan 5.5.1, bukan system Qt. Translasi di-render oleh lrelease kit tersebut (`QT_TOOL.lrelease.binary` di `.pro` memakai `$QT515_BIN`, fallback ke `lrelease` di `PATH`).
 
 ## Language
 

@@ -29,20 +29,37 @@ List, Kanban, Calendar, and a mind-map (Peta) view.
 | | |
 |---|---|
 | Language | C++17 (backend) + QML/Qt Quick (UI) |
-| Framework | **Qt 5.15.2** (pinned toolchain: `/home/banghbr/Qt515/5.15.2/gcc_64/bin/`) |
+| Framework | **Qt 5.15.2** (qmake + lrelease from Qt 5.15.2; point via `$QT515_BIN`, see Build) |
 | Build | qmake (not CMake) |
 | DB | SQLite via QtSql |
 | Tests | QtTest (backend) + QtQuickTest (QML) |
 
 ## Build (shadow build)
 
+Set `$QT515_BIN` once per shell to the `bin/` folder of your Qt 5.15.2 install
+(same kit as the `qmake` you run — never mix 5.5.1 or system Qt):
+
+```bash
+# Linux:
+export QT515_BIN=$HOME/Qt/5.15.2/gcc_64/bin
+# Windows (cmd):
+#   set QT515_BIN=C:/Qt/5.15.2/mingw81_64/bin
+# Windows (PowerShell):
+#   $env:QT515_BIN = "C:/Qt/5.15.2/mingw81_64/bin"
+# Sanity check (must print 5.15.2 from the same folder):
+$QT515_BIN/qmake --version
+```
+
+The `.pro` uses `$QT515_BIN/lrelease` (`lrelease.exe` on Windows); when the
+env var is empty it falls back to `lrelease` from `PATH`, and fails with a
+clear `lrelease tidak ditemukan ...` error otherwise.
+
 ```bash
 mkdir -p build
 cd build
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/qmake ../ToDoList-Integrated.pro
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/lrelease ../ToDoList-Integrated_id_ID.ts -qm .qm/ToDoList-Integrated_id_ID.qm
-make -j4
-QT_QPA_PLATFORM=offscreen ./ToDoList-Integrated --db /tmp/todo.db   # smoke run
+$QT515_BIN/qmake ../ToDoList-Integrated.pro
+make -j4   # Windows MinGW: mingw32-make -j4
+QT_QPA_PLATFORM=offscreen ./ToDoList-Integrated --db /tmp/todo.db   # smoke run (Linux)
 ```
 
 Always shadow-build in `build/` — never in-source or in `tests/` (artifacts
@@ -58,12 +75,12 @@ whenever the `.pro` changes.
 ```bash
 # backend
 mkdir -p build-backend && cd build-backend
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/qmake ../tests/backend/tst_backend.pro
+$QT515_BIN/qmake ../tests/backend/tst_backend.pro
 make -j4 && ./tst_backend
 
 # QML suite
 mkdir -p build-tst && cd build-tst
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/qmake ../tests/qml/tst_qml.pro
+$QT515_BIN/qmake ../tests/qml/tst_qml.pro
 make -j4 && QT_QPA_PLATFORM=offscreen ./tst_qml
 ```
 

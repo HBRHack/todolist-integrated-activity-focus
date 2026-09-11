@@ -55,10 +55,21 @@ TRANSLATIONS += \
     ToDoList-Integrated_id_ID.ts \
     ToDoList-Integrated_en.ts
 
-# lrelease sistem tidak ada (qttools5-dev-tools tak terinstal; /usr/bin/lrelease pun dangling).
-# Pakai lrelease qmake Qt 5.15.2 (toolchain pinned, konsisten dengan AGENTS.md). qtPrepareTool()
-# hanya menghormati QT_TOOL.<tool>.binary, bukan QMAKE_LRELEASE.
-QT_TOOL.lrelease.binary = /home/banghbr/Qt515/5.15.2/gcc_64/bin/lrelease
+# lrelease: utamakan $QT515_BIN, fallback ke lrelease di PATH.
+#   Linux:   export QT515_BIN=$HOME/Qt/5.15.2/gcc_64/bin   (sesuaikan lokasi Qt 5.15.2)
+#   Windows: set QT515_BIN=C:/Qt/5.15.2/mingw81_64/bin     (sesuaikan kit MinGW 5.15.2, pakai forward slash)
+# qtPrepareTool() hanya menghormati QT_TOOL.<tool>.binary, bukan QMAKE_LRELEASE.
+# Bila env var kosong, qmake memakai "lrelease" dari PATH; bila keduanya gagal,
+# build berhenti dengan error lrelease-not-found yang jelas dari make/qmake.
+QT515_BIN = $$(QT515_BIN)
+isEmpty(QT515_BIN) {
+    QT_TOOL.lrelease.binary = lrelease
+    message("QT515_BIN tidak diset - memakai 'lrelease' dari PATH. Contoh: export QT515_BIN=$HOME/Qt/5.15.2/gcc_64/bin")
+} else {
+    win32: QT_TOOL.lrelease.binary = $$QT515_BIN/lrelease.exe
+    else: QT_TOOL.lrelease.binary = $$QT515_BIN/lrelease
+    !exists($$QT_TOOL.lrelease.binary): error("lrelease tidak ditemukan di '$$QT_TOOL.lrelease.binary' - betulkan QT515_BIN ke folder bin Qt 5.15.2 (berisi lrelease)")
+}
 CONFIG += lrelease
 CONFIG += embed_translations
 

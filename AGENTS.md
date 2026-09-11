@@ -39,22 +39,32 @@ repo tetap bersih (artefak `.obj`, `.moc`, `.rcc`, `.qm`, Makefile, binary
 semua lahir di `build/`):
 
 ```
-Kita pakai **Qt 5.15.2** — qmake, lrelease, dan runner test semuanya dari
-`/home/banghbr/Qt515/5.15.2/gcc_64/bin/` (bukan 5.5.1, bukan system Qt).
+Kita pakai **Qt 5.15.2** — qmake dan lrelease harus dari kit Qt 5.15.2 yang sama.
+Tunjuk lokasinya lewat env var `$QT515_BIN` (bukan path hardcoded, bukan 5.5.1,
+bukan system Qt):
+
+# Linux:
+export QT515_BIN=$HOME/Qt/5.15.2/gcc_64/bin
+# Windows (cmd):   set QT515_BIN=C:/Qt/5.15.2/mingw81_64/bin
+# Windows (PowerShell): $env:QT515_BIN = "C:/Qt/5.15.2/mingw81_64/bin"
+$QT515_BIN/qmake --version   # harus mencetak 5.15.2
 
 ```
 # from repo root, once:
 mkdir -p build
 # then (workdir = build/):
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/qmake ../ToDoList-Integrated.pro
-/home/banghbr/Qt515/5.15.2/gcc_64/bin/lrelease ../ToDoList-Integrated_id_ID.ts -qm .qm/ToDoList-Integrated_id_ID.qm
-make -j4
+$QT515_BIN/qmake ../ToDoList-Integrated.pro
+make -j4   # Windows MinGW: mingw32-make -j4
 QT_QPA_PLATFORM=offscreen timeout 6 ./ToDoList-Integrated --db /tmp/opencode/todo-check.db
 ```
 
+- File `.pro` memakai `$QT515_BIN/lrelease` (`lrelease.exe` di Windows);
+  bila env var kosong, fallback ke `lrelease` di `PATH`, dan error jelas bila
+  keduanya gagal (`lrelease tidak ditemukan ...`).
 - `make` akan otomatis men-generate ulang Makefile bila `.pro` berubah — cukup
   jalankan `make` lagi di `build/`.
-- `lrelease` sistemy tidak ada; pakai yang dari Qt 5.15.2 (sama dengan toolchain qmake).
+- `lrelease` sistem (qttools5-dev-tools) tidak wajib; yang dipakai adalah lrelease
+  dari kit Qt 5.15.2 yang sama dengan qmake di atas.
 - Smoke-run terakhir memuat `main.qml` (StackLayout meng-instansiasi semua view
   sekaligus) → ampuh mendeteksi `ReferenceError` QML runtime tanpa unit test.
 - Baris `.qm` cukup dijalankan sekali (atau saat `.ts` berubah); `make` meng-skip jika `.qm` sudah baru.
