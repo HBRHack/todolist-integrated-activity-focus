@@ -10,6 +10,12 @@
         <file>components/SquareToolButton.qml</file>
         <file>components/ColumnColorPicker.qml</file>
         <file>components/ItemDetailPopup.qml</file>
+        <file>components/PromoteDialog.qml</file>
+        <file>components/TagChip.qml</file>
+        <file>components/InlineTagRow.qml</file>
+        <file>components/PriorityBadge.qml</file>
+        <file>components/SearchField.qml</file>
+        <file>components/FilterChipRow.qml</file>
         <file>components/BrutalScrollBar.qml</file>
         <file>components/SelectBox.qml</file>
         <file>components/Format.js</file>

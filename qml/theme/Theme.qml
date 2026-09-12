@@ -82,16 +82,31 @@ QtObject {
     readonly property int smallControlHeight: 28
     readonly property int tabBarHeight: 40
     readonly property int headerHeight: 40
-    readonly property int cardHeight: 52
+    readonly property int cardHeight: 66
     readonly property int itemHeight: 58
     readonly property int sectionHeight: 28
     readonly property int columnWidth: 240
     readonly property int sidebarWidth: 180
 
     readonly property int nodeWidth: 200
-    readonly property int nodeHeight: 60
+    readonly property int nodeHeight: 72
     readonly property int dragThreshold: 8
     readonly property int moveToEnd: 99
+
+    // SATU-SATUNYA tempat mapping color-key -> token (DESIGN.md
+    // "Color-key system"). Semua komponen/view memanggil fungsi ini —
+    // dilarang copy-paste switch-case di file lain. Fallback nilai tak
+    // dikenal -> "accent" (konsisten dengan whitelist backend).
+    function colorKeyToToken(key) {
+        switch (key) {
+        case "danger": return colorDanger
+        case "active": return colorActive
+        case "accentContent": return colorAccentContent
+        case "neutral": return colorMuted
+        case "accent":
+        default: return colorAccent
+        }
+    }
 
     function apply(name) {
         var p = presets[0]

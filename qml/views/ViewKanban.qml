@@ -18,26 +18,18 @@ Rectangle {
     property bool newBoardVisible: false
     property bool renameBoardVisible: false
     property int renameBoardId: -1
-    property bool newColumnVisible: false
-    property bool renameColumnVisible: false
+    property int deleteBoardId: -1
+    property string deleteBoardName: ""
     property int renameColumnId: -1
     property string pendingColumnColor: "accent"
 
-    // Lebar pemilih warna (ColumnColorPicker): 4 swatch 18px + 3 gap spacingSmall.
-    // Konstanta di root agar binding lebar kotak dialog tidak bergantung
-    // pada id anak (ReferenceError runtime di Qt 5.15 — lihat qt-515 §7.1).
-    readonly property int colorPickerWidth: 4 * 18 + 3 * Theme.spacingSmall
 
-    // Map color_key kolom ke token Theme preset aktif. Semua warna strip
-    // diambil dari sini — tidak ada hex bebas di view ini.
-    function columnColor(key) {
-        switch (key) {
-        case "danger": return Theme.colorDanger
-        case "active": return Theme.colorActive
-        case "accentContent": return Theme.colorAccentContent
-        default: return Theme.colorAccent
-        }
-    }
+// Map color_key kolom ke token Theme preset aktif. Satu sumber:
+// Theme.colorKeyToToken — tidak ada hex/switch bebas di view ini.
+function columnColor(key) {
+    return Theme.colorKeyToToken(key)
+}
+
 
     // Jalur tunggal pemilihan warna kolom yang dipakai kedua dialog.
     // columnId === -1 → kolom belum dibuat (dialog tambah) → simpan pending;
@@ -154,15 +146,59 @@ Rectangle {
         reloadBoards()
     }
 
+    // Seam hapus board via dialog konfirmasi (mitigasi #4c) — pola yang sama
+    // dengan requestDelete/commitDelete di ViewInbox: test memanggil langsung
+    // dua fungsi ini tanpa mouse sintetis (§7.26).
+    function requestDeleteBoard(id) {
+        for (var i = 0; i < boards.length; ++i) {
+            if (boards[i].id === id) {
+                deleteBoardId = id
+                deleteBoardName = boards[i].name
+                clearPositionsBox.checked = false
+                deleteBoardDialog.open()
+                return
+            }
+        }
+    }
+
+    function commitDeleteBoard() {
+        if (deleteBoardId === -1)
+            return
+        if (clearPositionsBox.checked)
+            repo.clearBoardNodePositions(deleteBoardId)
+        deleteBoard(deleteBoardId)
+        deleteBoardId = -1
+        deleteBoardName = ""
+        deleteBoardDialog.close()
+    }
+
     function addColumn() {
-        var name = newColumnField.text.trim()
+        var name = addColumnField.text.trim()
         if (name.length === 0 || selectedBoardId === -1) return
         var id = repo.addColumn(selectedBoardId, name)
         applyColumnColor(id, pendingColumnColor)
         pendingColumnColor = "accent"
-        newColumnField.text = ""
-        newColumnVisible = false
+        addColumnField.text = ""
+        addColumnDialog.close()
         reloadColumns()
+    }
+
+    function currentColumnName(columnId) {
+        for (var i = 0; i < columns.length; ++i) {
+            if (columns[i].id === columnId)
+                return columns[i].name
+        }
+        return ""
+    }
+
+    function commitRenameColumn() {
+        var name = renameColumnField.text.trim()
+        if (name.length > 0 && renameColumnId !== -1) {
+            repo.renameColumn(renameColumnId, name)
+            reloadColumns()
+        }
+        renameColumnDialog.close()
+        renameColumnId = -1
     }
 
     function deleteColumn(id) {
@@ -321,6 +357,18 @@ Rectangle {
                         }
                     }
                 }
+
+                // Hapus board aktif — selalu via dialog konfirmasi (mitigasi #4c).
+                // Row tidak me-layout anak yang invisible (qml-qtquick-row),
+                // jadi tombol hilang total saat tak ada board terpilih.
+                SquareToolButton {
+                    text: "\u00D7"
+                    objectName: "deleteBoardButton"
+                    danger: true
+                    tooltip: qsTr("Hapus Board")
+                    visible: root.selectedBoardId !== -1
+                    onClicked: root.requestDeleteBoard(root.selectedBoardId)
+                }
             }
         }
 
@@ -377,8 +425,7 @@ Rectangle {
                                     anchors.fill: parent
                                     onDoubleClicked: {
                                         renameColumnId = modelData.id
-                                        renameColumnField.text = modelData.name
-                                        renameColumnVisible = true
+                                        renameColumnDialog.open()
                                     }
                                 }
                             }
@@ -428,109 +475,19 @@ Rectangle {
                         hoverEnabled: true
                         onClicked: {
                             root.pendingColumnColor = "accent"
-                            newColumnVisible = true
-                            newColumnField.forceActiveFocus()
+                            addColumnDialog.open()
                         }
                     }
 
                     Keys.onPressed: {
                         if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
                             root.pendingColumnColor = "accent"
-                            newColumnVisible = true
-                            newColumnField.forceActiveFocus()
+                            addColumnDialog.open()
                             event.accepted = true
                         }
                     }
                 }
 
-                // Inline add column — field nama + pemilih warna strip
-                Rectangle {
-                    visible: newColumnVisible
-                    width: newColumnField.width + root.colorPickerWidth + Theme.spacingLarge + Theme.spacingLarge
-                    height: Theme.smallControlHeight
-                    radius: 0
-                    border.color: Theme.colorAccent
-                    border.width: Theme.borderWidth
-                    color: Theme.colorSurface
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: Theme.spacingTiny
-                        spacing: Theme.spacingMedium
-
-                        TextInput {
-                            id: newColumnField
-                            objectName: "newColumnField"
-                            width: 100
-                            height: Theme.smallControlHeight
-                            font.family: Theme.fontFamilyBody
-                            font.pixelSize: Theme.fontSizeBody
-                            color: Theme.colorText
-                            clip: true
-                            verticalAlignment: Text.AlignVCenter
-
-                            Keys.onReturnPressed: addColumn()
-                            Keys.onEscapePressed: {
-                                newColumnVisible = false
-                                newColumnField.text = ""
-                            }
-                        }
-
-                        ColumnColorPicker {
-                            id: addColorPicker
-                            selectedKey: root.pendingColumnColor
-                            onPicked: root.applyColumnColor(-1, key)
-                        }
-                    }
-                }
-
-                // Inline rename column — field nama + pemilih warna strip (real-time)
-                Rectangle {
-                    visible: renameColumnVisible
-                    width: renameColumnField.width + root.colorPickerWidth + Theme.spacingLarge + Theme.spacingMedium
-                    height: Theme.smallControlHeight
-                    radius: 0
-                    border.color: Theme.colorAccent
-                    border.width: Theme.borderWidth
-                    color: Theme.colorSurface
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: Theme.spacingTiny
-                        spacing: Theme.spacingMedium
-
-                        TextInput {
-                            id: renameColumnField
-                            width: 120
-                            height: Theme.smallControlHeight
-                            font.family: Theme.fontFamilyBody
-                            font.pixelSize: Theme.fontSizeBody
-                            color: Theme.colorText
-                            clip: true
-                            verticalAlignment: Text.AlignVCenter
-
-                            Keys.onReturnPressed: {
-                                var name = renameColumnField.text.trim()
-                                if (name.length > 0 && renameColumnId !== -1) {
-                                    repo.renameColumn(renameColumnId, name)
-                                    reloadColumns()
-                                }
-                                renameColumnVisible = false
-                                renameColumnId = -1
-                            }
-                            Keys.onEscapePressed: {
-                                renameColumnVisible = false
-                                renameColumnId = -1
-                            }
-                        }
-
-                        ColumnColorPicker {
-                            id: renameColorPicker
-                            selectedKey: root.currentColumnColor(renameColumnId)
-                            onPicked: root.applyColumnColor(renameColumnId, key)
-                        }
-                    }
-                }
             }
         }
 
@@ -659,14 +616,30 @@ Rectangle {
                                             anchors.margins: Theme.spacingSmall
                                             spacing: Theme.spacingTiny
 
-                                            Text {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: title
-                                                elide: Text.ElideRight
-                                                font.family: Theme.fontFamilyBody
-                                                font.pixelSize: Theme.fontSizeBody
-                                                font.bold: true
-                                                color: Theme.colorText
+                                                spacing: Theme.spacingTiny
+
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: title
+                                                    textFormat: Text.PlainText
+                                                    elide: Text.ElideRight
+                                                    font.family: Theme.fontFamilyBody
+                                                    font.pixelSize: Theme.fontSizeBody
+                                                    font.bold: true
+                                                    color: Theme.colorText
+                                                }
+
+                                                PriorityBadge {
+                                                    objectName: "prioBadge_" + itemId
+                                                    priority: priority
+                                                }
+                                            }
+
+                                            InlineTagRow {
+                                                tags: model.tags
+                                                maxChips: 2
                                             }
 
                                             Text {
@@ -826,6 +799,277 @@ Rectangle {
                     appSettings.mapMode = "perboard"
                     mapModeSetupDialog.close()
                     root.showNewBoardInput()
+                }
+            }
+        }
+    }
+
+    // Popup modal — Tambah Kolom (menggantikan box inline lama)
+    Popup {
+        id: addColumnDialog
+        objectName: "addColumnDialog"
+        parent: root
+        modal: true
+        width: 360
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+        onOpened: addColumnField.forceActiveFocus()
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Tambah Kolom")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: Theme.smallControlHeight
+                radius: 0
+                border.color: Theme.colorBorder
+                border.width: Theme.borderWidth
+                color: Theme.colorBackground
+
+                TextInput {
+                    id: addColumnField
+                    objectName: "newColumnField"
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingSmall
+                    font.family: Theme.fontFamilyBody
+                    font.pixelSize: Theme.fontSizeBody
+                    color: Theme.colorText
+                    clip: true
+                    verticalAlignment: Text.AlignVCenter
+
+                    Keys.onReturnPressed: addColumn()
+                    Keys.onEscapePressed: addColumnDialog.close()
+                }
+            }
+
+            ColumnColorPicker {
+                Layout.alignment: Qt.AlignHCenter
+                selectedKey: root.pendingColumnColor
+                onPicked: root.applyColumnColor(-1, key)
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Item { Layout.fillWidth: true }
+
+                PrimaryButton {
+                    text: qsTr("Batal")
+                    onClicked: addColumnDialog.close()
+                }
+
+                PrimaryButton {
+                    objectName: "addColumnSaveButton"
+                    text: qsTr("Tambah")
+                    highlighted: true
+                    onClicked: addColumn()
+                }
+            }
+        }
+    }
+
+    // Popup modal — Rename Kolom (menggantikan box inline lama)
+    Popup {
+        id: renameColumnDialog
+        objectName: "renameColumnDialog"
+        parent: root
+        modal: true
+        width: 360
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+        onOpened: {
+            renameColumnField.text = root.currentColumnName(renameColumnId)
+            renameColumnField.forceActiveFocus()
+            renameColumnField.selectAll()
+        }
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Ubah Kolom")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: Theme.smallControlHeight
+                radius: 0
+                border.color: Theme.colorBorder
+                border.width: Theme.borderWidth
+                color: Theme.colorBackground
+
+                TextInput {
+                    id: renameColumnField
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingSmall
+                    font.family: Theme.fontFamilyBody
+                    font.pixelSize: Theme.fontSizeBody
+                    color: Theme.colorText
+                    clip: true
+                    verticalAlignment: Text.AlignVCenter
+
+                    Keys.onReturnPressed: root.commitRenameColumn()
+                    Keys.onEscapePressed: renameColumnDialog.close()
+                }
+            }
+
+            ColumnColorPicker {
+                Layout.alignment: Qt.AlignHCenter
+                selectedKey: root.currentColumnColor(renameColumnId)
+                onPicked: root.applyColumnColor(renameColumnId, key)
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Item { Layout.fillWidth: true }
+
+                PrimaryButton {
+                    text: qsTr("Batal")
+                    onClicked: renameColumnDialog.close()
+                }
+
+                PrimaryButton {
+                    objectName: "renameColumnSaveButton"
+                    text: qsTr("Simpan")
+                    highlighted: true
+                    onClicked: root.commitRenameColumn()
+                }
+            }
+        }
+    }
+
+    // Popup modal — Konfirmasi hapus board (mitigasi #4c). Item board kembali
+    // ke Inbox (ADR-0008, bukan hapus permanen); checkbox opsional menghapus
+    // posisi petanya juga — default OFF agar tidak destruktif.
+    Popup {
+        id: deleteBoardDialog
+        objectName: "deleteBoardDialog"
+        parent: root
+        modal: true
+        width: 400
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        padding: 0
+
+        background: Rectangle {
+            radius: 0
+            color: Theme.colorSurface
+            border.color: Theme.colorBorder
+            border.width: Theme.borderWidth
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingLarge
+            spacing: Theme.spacingMedium
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Hapus Board?")
+                font.family: Theme.fontFamilyDisplay
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: qsTr("Board \"%1\" akan dihapus; seluruh itemnya kembali ke Inbox (tidak ikut terhapus).").arg(root.deleteBoardName)
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.colorMuted
+            }
+
+            CheckBox {
+                id: clearPositionsBox
+                objectName: "deleteBoardClearPositions"
+                Layout.fillWidth: true
+                checked: false
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeMedium
+                text: qsTr("Hapus juga posisi petanya")
+
+                indicator: Rectangle {
+                    width: 18
+                    height: 18
+                    color: clearPositionsBox.checked ? Theme.colorAccent : Theme.colorSurface
+                    border.color: clearPositionsBox.checked ? Theme.colorAccent : Theme.colorBorder
+                    border.width: Theme.borderWidth
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        visible: clearPositionsBox.checked
+                        color: Theme.colorBackground
+                    }
+                }
+
+                contentItem: Text {
+                    text: clearPositionsBox.text
+                    font: clearPositionsBox.font
+                    color: Theme.colorText
+                    leftPadding: clearPositionsBox.indicator.width + 8
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Item { Layout.fillWidth: true }
+
+                PrimaryButton {
+                    objectName: "deleteBoardCancelButton"
+                    text: qsTr("Batal")
+                    onClicked: deleteBoardDialog.close()
+                }
+
+                PrimaryButton {
+                    objectName: "deleteBoardConfirmButton"
+                    text: qsTr("Hapus")
+                    highlighted: true
+                    onClicked: root.commitDeleteBoard()
                 }
             }
         }

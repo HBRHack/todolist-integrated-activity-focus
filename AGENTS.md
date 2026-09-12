@@ -29,8 +29,11 @@ This repo is a Qt 5.15 project. The engineering skills (implement, tdd, code-rev
 - **`qt-515`** — Qt 5.15 master rules (containers, ownership, threading, C++/QML boundary, CMake, gotchas §7). Load before writing or reviewing any Qt code. See `docs/agents/qt-515.md`.
 - **`qt-cmake-project`** — build plumbing (CMake/qmake targets, resources). Load for any build file change.
 - **`qt-qml`** — QML best practices. Load for any QML file work.
+- **`cpp-code-review`** — pure-C++ review rules for the Standards axis of `code-review`. Qt-flavored parts defer to `qt-515`.
+- **`cpp-standards-reference`** — dual C++11 (N3337) vs C++17 (N4659) citations, mandatory 4-step Router. Every C++ finding in `code-review` on Qt files MUST carry `[N4659 §... | N3337 §...]` (or explicit `TIDAK ADA`).
+- **`qt515-reference`** — Qt 5.15.2 API docs (`html/<module>/<page>.md`) + `qml-integration-checklist.md`. Every Qt API finding in `code-review` MUST cite the combination (checklist for boundary + html path for API).
 
-Failing to load `qt-515` before Qt work is a review blocker. This is an opencode-level rule: when an issue spec under `.scratch/` involves Qt code, instruct the implementing agent to load `qt-515` first.
+Failing to load `qt-515` before Qt work is a review blocker. Same for `code-review` on `*.cpp/*.h/*.qml/*.js`: a review without the full bridge (`qt-515` + `cpp-code-review` + `cpp-standards-reference` + `qt515-reference`) is **INCOMPLETE**. This is an opencode-level rule: when an issue spec under `.scratch/` involves Qt code, instruct the implementing agent to load `qt-515` first.
 
 ## Compile test (tanpa unit test)
 

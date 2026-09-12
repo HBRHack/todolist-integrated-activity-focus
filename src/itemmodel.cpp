@@ -59,6 +59,16 @@ QVariant ItemModel::data(const QModelIndex &index, int role) const
         return it.lastMappedAt.isValid() ? it.lastMappedAt.toString(Qt::ISODate) : QVariant();
     case GroupRole:
         return groupOf(it);
+    case TagsRole: {
+        if (m_tagsCache.size() == m_items.size())
+            return m_tagsCache.at(index.row());
+        return tagsOf(it);
+    }
+    case TagIdsRole: {
+        if (m_tagsIdsCache.size() == m_items.size())
+            return m_tagsIdsCache.at(index.row());
+        return tagIdsOf(it);
+    }
     default:
         return QVariant();
     }
@@ -81,7 +91,16 @@ QHash<int, QByteArray> ItemModel::roleNames() const
     roles[CreatedAtRole] = "createdAt";
     roles[LastMappedAtRole] = "lastMappedAt";
     roles[GroupRole] = "group";
+    roles[TagsRole] = "tags";
+    roles[TagIdsRole] = "tagIds";
     return roles;
+}
+
+PetaIde::ItemData ItemModel::itemAt(int row) const
+{
+    if (row < 0 || row >= m_items.size())
+        return ItemData();
+    return m_items.at(row);
 }
 
 int ItemModel::rowOfItem(int itemId) const
@@ -112,21 +131,57 @@ int ItemModel::groupRank(const QString &group)
     return 2;
 }
 
+QVariantList ItemModel::tagsOf(const ItemData &item) const
+{
+    QVariantList tags;
+    for (const TagData &t : item.tags) {
+        tags.append(QVariantMap({
+            { QStringLiteral("id"), t.id },
+            { QStringLiteral("name"), t.name },
+            { QStringLiteral("colorKey"), t.colorKey }
+        }));
+    }
+    return tags;
+}
+
+QVariantList ItemModel::tagIdsOf(const ItemData &item) const
+{
+    QVariantList ids;
+    for (const TagData &t : item.tags)
+        ids.append(t.id);
+    return ids;
+}
+
+void ItemModel::syncTagCaches()
+{
+    m_tagsCache.clear();
+    m_tagsIdsCache.clear();
+    m_tagsCache.reserve(m_items.size());
+    m_tagsIdsCache.reserve(m_items.size());
+    for (const ItemData &it : m_items) {
+        m_tagsCache.append(tagsOf(it));
+        m_tagsIdsCache.append(tagIdsOf(it));
+    }
+}
+
 bool ItemModel::sameItem(const ItemData &a, const ItemData &b)
 {
-    return a.id == b.id
-        && a.columnId == b.columnId
-        && a.boardId == b.boardId
-        && a.title == b.title
-        && a.description == b.description
-        && a.dueDate == b.dueDate
-        && a.dueTime == b.dueTime
-        && a.priority == b.priority
-        && a.orderIndex == b.orderIndex
-        && a.createdAt == b.createdAt
-        && a.lastMappedAt == b.lastMappedAt
-        && a.boardName == b.boardName
-        && a.columnName == b.columnName;
+    if (a.id != b.id || a.columnId != b.columnId || a.boardId != b.boardId
+        || a.title != b.title || a.description != b.description
+        || a.dueDate != b.dueDate || a.dueTime != b.dueTime
+        || a.priority != b.priority || a.orderIndex != b.orderIndex
+        || a.createdAt != b.createdAt || a.lastMappedAt != b.lastMappedAt
+        || a.boardName != b.boardName || a.columnName != b.columnName)
+        return false;
+    if (a.tags.size() != b.tags.size())
+        return false;
+    for (int i = 0; i < a.tags.size(); ++i) {
+        const TagData &ta = a.tags.at(i);
+        const TagData &tb = b.tags.at(i);
+        if (ta.id != tb.id || ta.name != tb.name || ta.colorKey != tb.colorKey)
+            return false;
+    }
+    return true;
 }
 
 void ItemModel::reload()
@@ -182,4 +237,5 @@ void ItemModel::reload()
         m_items.remove(cursor, m_items.size() - cursor);
         endRemoveRows();
     }
+    syncTagCaches();
 }

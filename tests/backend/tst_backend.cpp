@@ -54,7 +54,7 @@ class TstBackend : public QObject
 
 private slots:
     void init();
-    void schemaIsV4();
+    void schemaIsV5();
     void seedCreatesUmumBoard();
     void settingsPersistAcrossReopen();
     void canvasLockPersistsAcrossReopen();
@@ -69,6 +69,10 @@ private slots:
     void firstMappingSetsLastMappedAtOnce();
     void columnProxyReflectsMotion();
     void moveToInboxKeepsColumnOrder();
+    void standaloneStateIsValid();
+    void moveToInboxKeepsNodePositionAndLastMappedAt();
+    void mapItemToMapAssignsBoardAndUpsertsNode();
+    void promoteBoardAndMapTogether();
     void quickAddDefaultsToToday();
     void nlpParsesLikeQuickAdd();
     void nlpManualDateOverride();
@@ -77,6 +81,19 @@ private slots:
     void inboxProxyPerBoardFilter();
     void listProxyFiltersByBoard();
     void listProxySortsByDateAndStatus();
+    void listProxySortsByPriority();
+    void priorityClampsTo1To3();
+    void setItemPrioritySameValueKeepsState();
+    void freshDbHasNoSeededTags();
+    void tagCrudRoundtrip();
+    void itemModelExposesTagsAndPriority();
+    void tagFilterOnInboxAndListProxies();
+    void filterTextMatchesTitleDescriptionAndTag();
+    void filterPrioritiesCombination();
+    void filterTagIdsAndSemantics();
+    void filterCombinedWithSortStaysCorrect();
+    void filterConsistentAcrossAllProxies();
+    void filterSettersEmitFilterChanged();
     void calendarProxyFiltersByMonth();
     void nodePositionRoundtrip();
     void nodePositionPersistsAcrossReopen();
@@ -120,9 +137,9 @@ void TstBackend::init()
     QVERIFY(db::seedDefaults());
 }
 
-void TstBackend::schemaIsV4()
+void TstBackend::schemaIsV5()
 {
-    QCOMPARE(db::schemaVersion(), 4);
+    QCOMPARE(db::schemaVersion(), 5);
 }
 
 void TstBackend::seedCreatesUmumBoard()
@@ -526,6 +543,115 @@ void TstBackend::moveToInboxKeepsColumnOrder()
             QVERIFY(it.orderIndex >= 0 && it.orderIndex <= 1);
 }
 
+void TstBackend::standaloneStateIsValid()
+{
+    Repository repo;
+    const int a = repo.addItem(QStringLiteral("a"), QString(), QDate::currentDate());
+    const ItemData *ia = nullptr;
+    for (const ItemData &it : repo.items())
+        if (it.id == a)
+            ia = &it;
+    QVERIFY(ia);
+    QCOMPARE(ia->columnId, -1);
+
+    ItemModel model(&repo);
+    InboxProxyModel inbox(&model);
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 1);
+
+    repo.setNodePosition(a, QPointF(123.0, 456.0));
+    QCoreApplication::processEvents();
+    QVERIFY(repo.hasNodePosition(a));
+    for (const ItemData &it : repo.items())
+        if (it.id == a)
+            QCOMPARE(it.columnId, -1);
+    QCOMPARE(inbox.rowCount(), 1);
+}
+
+void TstBackend::moveToInboxKeepsNodePositionAndLastMappedAt()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int colA = repo.columnsForBoard(boardId).at(0).id;
+
+    const int a = repo.addItem(QStringLiteral("a"), QString(), QDate::currentDate());
+    repo.moveItem(a, colA, 0);
+    const QDateTime mappedAt = repo.items().first().lastMappedAt;
+    QVERIFY(mappedAt.isValid());
+
+    repo.setNodePosition(a, QPointF(111.0, 222.0));
+    QVERIFY(repo.hasNodePosition(a));
+
+    repo.moveItem(a, -1, 0);
+    QCOMPARE(repo.nodePosition(a), QPointF(111.0, 222.0));
+    QCOMPARE(repo.items().first().lastMappedAt, mappedAt);
+}
+
+void TstBackend::mapItemToMapAssignsBoardAndUpsertsNode()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int a = repo.addItem(QStringLiteral("a"), QString(), QDate::currentDate());
+    const int orderA = repo.items().first().orderIndex;
+
+    repo.mapItemToMap(a, boardId, QPointF());
+    const ItemData *ia = nullptr;
+    for (const ItemData &it : repo.items())
+        if (it.id == a)
+            ia = &it;
+    QVERIFY(ia);
+    QCOMPARE(ia->boardId, boardId);
+    QCOMPARE(ia->columnId, -1);
+    QCOMPARE(ia->orderIndex, orderA);
+    // mapItemToMap tidak menyentuh last_mapped_at (spesifikasi §7) — waktu
+    // "pemetaan" hanya diisi moveItem() saat masuk kolom.
+    QVERIFY(!ia->lastMappedAt.isValid());
+    QVERIFY(repo.hasNodePosition(a));
+    QCOMPARE(repo.nodePosition(a),
+             QPointF(1500.0 + (a * 97) % 600 - 300.0,
+                     1500.0 + (a * 53) % 400 - 200.0));
+
+    repo.mapItemToMap(a, 0, QPointF(700.0, 800.0));
+    for (const ItemData &it : repo.items())
+        if (it.id == a) {
+            QCOMPARE(it.boardId, boardId);
+            QCOMPARE(it.columnId, -1);
+        }
+    QCOMPARE(repo.nodePosition(a), QPointF(700.0, 800.0));
+}
+
+void TstBackend::promoteBoardAndMapTogether()
+{
+    Repository repo;
+    const int boardId = repo.boards().first().id;
+    const int colA = repo.columnsForBoard(boardId).at(0).id;
+    const int colB = repo.columnsForBoard(boardId).at(1).id;
+
+    const int a = repo.addItem(QStringLiteral("a"), QString(), QDate::currentDate());
+    const int b = repo.addItem(QStringLiteral("b"), QString(), QDate::currentDate());
+    repo.moveItem(a, colA, 99);
+    repo.moveItem(b, colA, 99);
+
+    repo.moveItem(b, colB, 0);
+    repo.mapItemToMap(b, boardId, QPointF(50.0, 60.0));
+    for (const ItemData &it : repo.items()) {
+        if (it.id == b) {
+            QCOMPARE(it.columnId, colB);
+            QCOMPARE(it.boardId, boardId);
+        }
+    }
+    QCOMPARE(repo.nodePosition(b), QPointF(50.0, 60.0));
+
+    QStringList seq;
+    for (const ItemData &it : repo.items())
+        if (it.columnId == colA)
+            seq.append(it.title);
+    QCOMPARE(seq, QStringList({ QStringLiteral("a") }));
+    for (const ItemData &it : repo.items())
+        if (it.columnId == colA)
+            QCOMPARE(it.orderIndex, 0);
+}
+
 void TstBackend::quickAddDefaultsToToday()
 {
     Repository repo;
@@ -777,6 +903,445 @@ void TstBackend::listProxySortsByDateAndStatus()
     proxy.setSortMode(QStringLiteral("status"));
     QCoreApplication::processEvents();
     QCOMPARE(idsOf(), QList<int>({ nowItem, soon, late }));
+}
+
+void TstBackend::listProxySortsByPriority()
+{
+    Repository repo;
+    const QDate today = QDate::currentDate();
+    const int low = repo.addItem(QStringLiteral("rendah"), QString(), today, QTime(), -1, 1);
+    const int mid = repo.addItem(QStringLiteral("sedang"), QString(), today, QTime(), -1, 2);
+    const int high = repo.addItem(QStringLiteral("tinggi"), QString(), today, QTime(), -1, 3);
+
+    ItemModel model(&repo);
+    ListProxyModel proxy;
+    proxy.setItemModel(&model);
+    proxy.setSortMode(QStringLiteral("prioritas"));
+    QCoreApplication::processEvents();
+
+    auto idsOf = [&]() {
+        QList<int> out;
+        for (int r = 0; r < proxy.rowCount(); ++r)
+            out.append(proxy.index(r, 0).data(ItemModel::IdRole).toInt());
+        return out;
+    };
+
+    // 3 (Tinggi) → 2 (Sedang) → 1 (Rendah): urutan prioritas turun
+    QCOMPARE(idsOf(), QList<int>({ high, mid, low }));
+
+    // Tie-break prioritas yang sama: dueDate naik
+    const QDate besok = today.addDays(1);
+    const int lowLusa = repo.addItem(QStringLiteral("renda lusa"), QString(), besok, QTime(), -1, 1);
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ high, mid, low, lowLusa }));
+}
+
+void TstBackend::priorityClampsTo1To3()
+{
+    Repository repo;
+    const int id = repo.addItem(QStringLiteral("clamp"), QString(), QDate::currentDate(),
+                                QTime(), -1, 9);
+    QCOMPARE(repo.items().first().priority, 1);
+
+    repo.setItemPriority(id, 5);
+    QCOMPARE(repo.items().first().priority, 1);
+
+    repo.setItemPriority(id, 3);
+    QCOMPARE(repo.items().first().priority, 3);
+
+    repo.setItemPriority(id, 0);
+    QCOMPARE(repo.items().first().priority, 3);
+}
+
+void TstBackend::setItemPrioritySameValueKeepsState()
+{
+    Repository repo;
+    const int id = repo.addItem(QStringLiteral("stabil"), QString(), QDate::currentDate(),
+                                QTime(), -1, 2);
+    repo.setItemPriority(id, 2);
+    QCOMPARE(repo.items().first().priority, 2);
+    QCOMPARE(repo.itemInfo(id).value(QStringLiteral("priority")).toInt(), 2);
+}
+
+void TstBackend::freshDbHasNoSeededTags()
+{
+    Repository repo;
+    // seedDefaults tidak menyemai tag (spec issue 18: daftar tag mulai kosong —
+    // user yang membuat; board default tetap ada).
+    QVERIFY(repo.allTags().isEmpty());
+    QVERIFY(!repo.boards().isEmpty());
+}
+
+void TstBackend::tagCrudRoundtrip()
+{
+    Repository repo;
+    const int tagId = repo.addTag(QStringLiteral("  Kerja  "));
+    QVERIFY(tagId != -1);
+
+    // IDEMPotent: nama sama → id yang sama
+    QCOMPARE(repo.addTag(QStringLiteral("kerja")), tagId);
+
+    // Rename
+    QVERIFY(repo.renameTag(tagId, QStringLiteral("Kantor")));
+    const QVariantList tagList = repo.tagList();
+    QVariantMap named;
+    for (const QVariant &v : tagList) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toInt() == tagId)
+            named = m;
+    }
+    QCOMPARE(named.value(QStringLiteral("name")).toString(), QStringLiteral("Kantor"));
+
+    // Konflik nama (UNIQUE) → gagal
+    QVERIFY(repo.addTag(QStringLiteral("lain")) != -1);
+    QVERIFY(!repo.renameTag(tagId, QStringLiteral("lain")));
+
+    // Warna: hanya dalam whitelist
+    repo.setTagColor(tagId, QStringLiteral("danger"));
+    const QVector<TagData> afterSet = repo.allTags();
+    for (const TagData &t : afterSet) {
+        if (t.id == tagId) {
+            QCOMPARE(t.colorKey, QStringLiteral("danger"));
+            break;
+        }
+    }
+    repo.setTagColor(tagId, QStringLiteral("tidak-ada-warna"));
+    for (const TagData &t : repo.allTags()) {
+        if (t.id == tagId) {
+            QCOMPARE(t.colorKey, QStringLiteral("neutral"));
+            break;
+        }
+    }
+
+    // Attach/detach + idempotensi
+    const int itemId = repo.quickAdd(QStringLiteral("ber-tag"));
+    repo.attachTag(itemId, tagId);
+    repo.attachTag(itemId, tagId);
+    QCOMPARE(repo.tagIdsForItem(itemId), QVector<int>({ tagId }));
+    repo.detachTag(itemId, tagId);
+    QVERIFY(repo.tagIdsForItem(itemId).isEmpty());
+
+    // Item terisi via item_tags aggregation
+    repo.attachTag(itemId, tagId);
+    const ItemData d = repo.items().first();
+    QCOMPARE(d.tags.size(), 1);
+    QCOMPARE(d.tags.first().name, QStringLiteral("Kantor"));
+
+    // Hapus tag → item_tags ikut hilang
+    repo.deleteTag(tagId);
+    QVERIFY(repo.tagIdsForItem(itemId).isEmpty());
+}
+
+void TstBackend::itemModelExposesTagsAndPriority()
+{
+    Repository repo;
+    const int tagA = repo.addTag(QStringLiteral("Kampus"));
+    const int tagB = repo.addTag(QStringLiteral("Keluarga"));
+    const int itemId = repo.quickAdd(QStringLiteral("tugas kuliah"));
+
+    ItemModel model(&repo);
+    QCoreApplication::processEvents();
+    QCOMPARE(model.rowCount(), 1);
+    const QModelIndex idx = model.index(0, 0);
+    QCOMPARE(idx.data(ItemModel::PriorityRole).toInt(), 1);
+
+    repo.setItemPriority(itemId, 2);
+    QCoreApplication::processEvents();
+    QCOMPARE(idx.data(ItemModel::PriorityRole).toInt(), 2);
+
+    repo.attachTag(itemId, tagA);
+    repo.attachTag(itemId, tagB);
+    QCoreApplication::processEvents();
+    const QVariantList tags = idx.data(ItemModel::TagsRole).toList();
+    QCOMPARE(tags.size(), 2);
+    const QVariantList ids = idx.data(ItemModel::TagIdsRole).toList();
+    QVERIFY(ids.contains(tagA));
+    QVERIFY(ids.contains(tagB));
+    const QString first = tags.first().toMap().value(QStringLiteral("name")).toString();
+    QVERIFY(first == QStringLiteral("Kampus") || first == QStringLiteral("Keluarga"));
+}
+
+void TstBackend::tagFilterOnInboxAndListProxies()
+{
+    Repository repo;
+    const int tagId = repo.addTag(QStringLiteral("solo"));
+    const int tagged = repo.quickAdd(QStringLiteral("dengan tag"));
+    const int plain = repo.quickAdd(QStringLiteral("tanpa tag"));
+    repo.attachTag(tagged, tagId);
+
+    ItemModel model(&repo);
+    InboxProxyModel inbox(&model);
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 2);
+
+    inbox.setFilterTagIds(QVariantList{ tagId });
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 1);
+    QCOMPARE(inbox.index(0, 0).data(ItemModel::IdRole).toInt(), tagged);
+
+    inbox.setFilterTagIds(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 2);
+
+    ListProxyModel proxy;
+    proxy.setItemModel(&model);
+    proxy.setFilterTagIds(QVariantList{ tagId });
+    QCoreApplication::processEvents();
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(proxy.index(0, 0).data(ItemModel::IdRole).toInt(), tagged);
+}
+
+void TstBackend::filterTextMatchesTitleDescriptionAndTag()
+{
+    Repository repo;
+    const int tagId = repo.addTag(QStringLiteral("Jualan-Ide"));
+    const QDate today = QDate::currentDate();
+    const int byTitle = repo.addItem(QStringLiteral("jual sepeda bekas"), QString(), today);
+    const int byDesc = repo.addItem(QStringLiteral("kegiatan"),
+                                    QStringLiteral("harga bisa NEGO sampai copot"), today);
+    const int byTag = repo.addItem(QStringLiteral("konten bulanan"), QString(), today);
+    repo.attachTag(byTag, tagId);
+    repo.addItem(QStringLiteral("beli susu"), QString(), today);
+
+    ItemModel model(&repo);
+    InboxProxyModel inbox(&model);
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 4);
+
+    // Substring case-insensitive pada judul
+    inbox.setFilterText(QStringLiteral("SEPEDA"));
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 1);
+    QCOMPARE(inbox.index(0, 0).data(ItemModel::IdRole).toInt(), byTitle);
+
+    // Substring pada deskripsi
+    inbox.setFilterText(QStringLiteral("nego"));
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 1);
+    QCOMPARE(inbox.index(0, 0).data(ItemModel::IdRole).toInt(), byDesc);
+
+    // Substring pada nama tag (bukan hanya judul/deskripsi item)
+    inbox.setFilterText(QStringLiteral("jualan"));
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 1);
+    QCOMPARE(inbox.index(0, 0).data(ItemModel::IdRole).toInt(), byTag);
+
+    // Blank/whitespace = tanpa filter teks
+    inbox.setFilterText(QStringLiteral("   "));
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 4);
+
+    // Kosong → semua kembali
+    inbox.setFilterText(QString());
+    QCoreApplication::processEvents();
+    QCOMPARE(inbox.rowCount(), 4);
+}
+
+void TstBackend::filterPrioritiesCombination()
+{
+    Repository repo;
+    const QDate today = QDate::currentDate();
+    const int tinggi = repo.addItem(QStringLiteral("Tinggi"), QString(), today, QTime(), -1, 3);
+    const int sedang = repo.addItem(QStringLiteral("Sedang"), QString(), today, QTime(), -1, 2);
+    const int rendah = repo.addItem(QStringLiteral("Rendah"), QString(), today, QTime(), -1, 1);
+
+    ItemModel model(&repo);
+    ListProxyModel proxy;
+    proxy.setItemModel(&model);
+    QCoreApplication::processEvents();
+    QCOMPARE(proxy.rowCount(), 3);
+
+    auto idsOf = [&]() {
+        QList<int> out;
+        for (int r = 0; r < proxy.rowCount(); ++r)
+            out.append(proxy.index(r, 0).data(ItemModel::IdRole).toInt());
+        return out;
+    };
+
+    // Kombinasi Tinggi + Rendah → hanya dua itu
+    proxy.setFilterPriorities(QVariantList{ 1, 3 });
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ tinggi, rendah }));
+
+    // Kosong → semua prioritas
+    proxy.setFilterPriorities(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ tinggi, sedang, rendah }));
+}
+
+void TstBackend::filterTagIdsAndSemantics()
+{
+    Repository repo;
+    const int tagA = repo.addTag(QStringLiteral("A"));
+    const int tagB = repo.addTag(QStringLiteral("B"));
+    const QDate today = QDate::currentDate();
+    const int both = repo.addItem(QStringLiteral("dua tag"), QString(), today);
+    repo.attachTag(both, tagA);
+    repo.attachTag(both, tagB);
+    const int onlyA = repo.addItem(QStringLiteral("satu tag"), QString(), today);
+    repo.attachTag(onlyA, tagA);
+    const int plain = repo.addItem(QStringLiteral("tanpa tag"), QString(), today);
+
+    ItemModel model(&repo);
+    ListProxyModel proxy;
+    proxy.setItemModel(&model);
+    QCoreApplication::processEvents();
+    QCOMPARE(proxy.rowCount(), 3);
+
+    auto idsOf = [&]() {
+        QList<int> out;
+        for (int r = 0; r < proxy.rowCount(); ++r)
+            out.append(proxy.index(r, 0).data(ItemModel::IdRole).toInt());
+        return out;
+    };
+
+// Satu tag → semua item yang punya tag itu
+    proxy.setFilterTagIds(QVariantList{ tagA });
+    QCoreApplication::processEvents();
+    QSet<int> withA;
+    for (int id : idsOf())
+        withA.insert(id);
+    QCOMPARE(withA, QSet<int>({ both, onlyA }));
+
+    // Dua tag → AND: hanya item yang punya keduanya
+    proxy.setFilterTagIds(QVariantList{ tagA, tagB });
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ both }));
+
+    // Kosong → semua (termasuk yang tanpa tag)
+    proxy.setFilterTagIds(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(proxy.rowCount(), 3);
+    QSet<int> all;
+    for (int id : idsOf())
+        all.insert(id);
+    QCOMPARE(all, QSet<int>({ both, onlyA, plain }));
+}
+
+void TstBackend::filterCombinedWithSortStaysCorrect()
+{
+    Repository repo;
+    const int tagX = repo.addTag(QStringLiteral("X"));
+    const QDate today = QDate::currentDate();
+    const int highTagged = repo.addItem(QStringLiteral("lapor akhiran"), QString(), today, QTime(), -1, 3);
+    const int highPlain = repo.addItem(QStringLiteral("lapor lain"), QString(), today, QTime(), -1, 3);
+    const int lowTagged = repo.addItem(QStringLiteral("lapor rendah"), QString(), today, QTime(), -1, 1);
+    repo.attachTag(highTagged, tagX);
+    repo.attachTag(lowTagged, tagX);
+
+    ItemModel model(&repo);
+    ListProxyModel proxy;
+    proxy.setItemModel(&model);
+    proxy.setSortMode(QStringLiteral("prioritas"));
+    QCoreApplication::processEvents();
+
+    auto idsOf = [&]() {
+        QList<int> out;
+        for (int r = 0; r < proxy.rowCount(); ++r)
+            out.append(proxy.index(r, 0).data(ItemModel::IdRole).toInt());
+        return out;
+    };
+
+    // Teks + prioritas + tag beriring: sisa item harus tetap Tinggi→Rendah
+    proxy.setFilterText(QStringLiteral("lapor"));
+    proxy.setFilterPriorities(QVariantList{ 1, 3 });
+    proxy.setFilterTagIds(QVariantList{ tagX });
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ highTagged, lowTagged }));
+
+    // Tag saja tetap menghormati urutan prioritas
+    proxy.setFilterText(QString());
+    proxy.setFilterPriorities(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ highTagged, lowTagged }));
+
+    // Tag dibersihkan → semua kembali, urutan prioritas utuh
+    proxy.setFilterTagIds(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(idsOf(), QList<int>({ highTagged, highPlain, lowTagged }));
+
+    // Dipadukan dengan board non-Inbox: tetap konsisten
+    repo.moveItem(highPlain, repo.boards().first().id, 0);
+    proxy.setBoardId(-1);
+    QCoreApplication::processEvents();
+    QCOMPARE(proxy.rowCount(), 3);
+}
+
+void TstBackend::filterConsistentAcrossAllProxies()
+{
+    Repository repo;
+    const int tagX = repo.addTag(QStringLiteral("highlight"));
+    const QDate today = QDate::currentDate();
+    const int hit = repo.addItem(QStringLiteral("jual sepeda gunung"), QString(), today, QTime(), -1, 1);
+    repo.attachTag(hit, tagX);
+    repo.addItem(QStringLiteral("beli susu"), QString(), today, QTime(), -1, 3);
+
+    ItemModel model(&repo);
+    InboxProxyModel inbox(&model);
+    ListProxyModel list;
+    list.setItemModel(&model);
+    MapProxyModel map;
+    map.setItemModel(&model);
+    QCoreApplication::processEvents();
+
+    // Kriteria sama → hasil sama di Inbox, List, dan Peta
+    const QString text = QStringLiteral("sepeda");
+    const QVariantList prios{ 1 };
+    const QVariantList tags{ tagX };
+    inbox.setFilterText(text);
+    inbox.setFilterPriorities(prios);
+    inbox.setFilterTagIds(tags);
+    list.setFilterText(text);
+    list.setFilterPriorities(prios);
+    list.setFilterTagIds(tags);
+    map.setFilterText(text);
+    map.setFilterPriorities(prios);
+    map.setFilterTagIds(tags);
+    QCoreApplication::processEvents();
+
+    for (const QSortFilterProxyModel *proxy : { static_cast<QSortFilterProxyModel *>(&inbox),
+                                                static_cast<QSortFilterProxyModel *>(&list),
+                                                static_cast<QSortFilterProxyModel *>(&map) }) {
+        QCOMPARE(proxy->rowCount(), 1);
+        QCOMPARE(proxy->index(0, 0).data(ItemModel::IdRole).toInt(), hit);
+    }
+
+    // Kosongkan map → semua kembali di view itu
+    map.setFilterText(QString());
+    map.setFilterPriorities(QVariantList());
+    map.setFilterTagIds(QVariantList());
+    QCoreApplication::processEvents();
+    QCOMPARE(map.rowCount(), 2);
+}
+
+void TstBackend::filterSettersEmitFilterChanged()
+{
+    Repository repo;
+    const QDate today = QDate::currentDate();
+    repo.addItem(QStringLiteral("a"), QString(), today);
+
+    ItemModel model(&repo);
+    InboxProxyModel inbox(&model);
+    QCoreApplication::processEvents();
+
+    QSignalSpy spy(&inbox, &InboxProxyModel::filterChanged);
+    inbox.setFilterText(QStringLiteral("a"));
+    QCOMPARE(spy.count(), 1);
+
+    // Nilai sama → tanpa re-emit
+    inbox.setFilterText(QStringLiteral("a"));
+    QCOMPARE(spy.count(), 1);
+
+    inbox.setFilterPriorities(QVariantList{ 1 });
+    QCOMPARE(spy.count(), 2);
+
+    inbox.setFilterTagIds(QVariantList{ 1 });
+    QCOMPARE(spy.count(), 3);
+
+    // Setter idempotent pada daftar kosong
+    inbox.setFilterPriorities(QVariantList());
+    inbox.setFilterPriorities(QVariantList());
+    QCOMPARE(spy.count(), 4);
 }
 
 void TstBackend::calendarProxyFiltersByMonth()
@@ -1369,7 +1934,7 @@ void TstBackend::undoRedoLayoutRoundtrip()
     repo.addEdge(b, a); // B → A, A induk
     repo.setNodePosition(a, QPointF(10.0, 10.0));
 
-    repo.layoutMap(boardId);
+    repo.layoutMap(boardId, 224.0, 96.0);
     const QPointF laidA = repo.nodePosition(a);
     const QPointF laidB = repo.nodePosition(b);
     QVERIFY(repo.hasNodePosition(b));
@@ -1576,7 +2141,7 @@ void TstBackend::nodeLayoutProducesLevelsWithoutOverlap()
     QVERIFY(repo.addEdge(g1, c1));
 
     const auto all = repo.items();
-    const auto positioned = NodeLayout::layout(all, repo.edges());
+    const auto positioned = NodeLayout::layout(all, repo.edges(), 224.0, 96.0);
     QCOMPARE(positioned.size(), all.size());
 
     QHash<int, QPointF> pos;
@@ -1615,7 +2180,7 @@ void TstBackend::nodeLayoutPersistsPositionsViaRepo()
     QVERIFY(repo.addEdge(a2, a1));
 
     // Layout global (−1) → semua item dapat posisi
-    repo.layoutMap(-1);
+    repo.layoutMap(-1, 224.0, 96.0);
     QVERIFY(repo.hasNodePosition(a1));
     QVERIFY(repo.hasNodePosition(a2));
     QVERIFY(repo.hasNodePosition(b1));
@@ -1625,14 +2190,14 @@ void TstBackend::nodeLayoutPersistsPositionsViaRepo()
 
     // Layout per-board → hanya item board itu yang disentuh, posisi board lain utuh
     const QPointF beforeB = repo.nodePosition(b1);
-    repo.layoutMap(boardA);
+    repo.layoutMap(boardA, 224.0, 96.0);
     QVERIFY(repo.hasNodePosition(a1));
     QVERIFY(repo.hasNodePosition(a2));
     QCOMPARE(repo.nodePosition(b1), beforeB);
 
     // Item Inbox (belum dipetakan) ikut di-layout dalam mode global
     const int inboxItem = repo.addItem(QStringLiteral("inbox"), QString(), QDate::currentDate());
-    repo.layoutMap(-1);
+    repo.layoutMap(-1, 224.0, 96.0);
     QVERIFY(repo.hasNodePosition(inboxItem));
 }
 

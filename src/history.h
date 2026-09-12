@@ -11,7 +11,7 @@
 class CanvasHistory
 {
 public:
-    enum Kind {
+    enum class Kind {
         AddShape = 1,
         EditShape,
         DeleteShape,
@@ -23,7 +23,7 @@ public:
     };
 
     struct Step {
-        int kind = 0;
+        Kind kind = Kind::AddShape;
         int id = -1;        // id entitas utama (shape / item / edge)
         QVariantMap before; // snapshot sebelum aksi
         QVariantMap after;  // snapshot sesudah aksi

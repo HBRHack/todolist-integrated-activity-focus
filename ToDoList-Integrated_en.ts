@@ -2,6 +2,29 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en">
 <context>
+    <name>FilterChipRow</name>
+    <message>
+        <source>Tinggi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sedang</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rendah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Prioritas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ItemDetailPopup</name>
     <message>
         <source>Inbox</source>
@@ -22,6 +45,104 @@
     <message>
         <source>Tutup</source>
         <translation type="unfinished">Close</translation>
+    </message>
+    <message>
+        <source>Kembalikan ke Inbox</source>
+        <translation type="unfinished">Return to Inbox</translation>
+    </message>
+    <message>
+        <source>Petakan…</source>
+        <translation type="unfinished">Map…</translation>
+    </message>
+    <message>
+        <source>Prioritas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rendah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sedang</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tinggi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tag baru…</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PriorityBadge</name>
+    <message>
+        <source>Tinggi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sedang</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rendah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Prioritas %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PromoteDialog</name>
+    <message>
+        <source>Petakan</source>
+        <translation type="unfinished">Map</translation>
+    </message>
+    <message>
+        <source>Pilih satu atau lebih tujuan — tidak saling eksklusif.</source>
+        <translation type="unfinished">Choose one or more destinations — not mutually exclusive.</translation>
+    </message>
+    <message>
+        <source>Board/Kolom</source>
+        <translation type="unfinished">Board/Column</translation>
+    </message>
+    <message>
+        <source>Board · Kolom</source>
+        <translation type="unfinished">Board · Column</translation>
+    </message>
+    <message>
+        <source>Peta</source>
+        <translation type="unfinished">Map</translation>
+    </message>
+    <message>
+        <source>Papan target</source>
+        <translation type="unfinished">Target board</translation>
+    </message>
+    <message>
+        <source>Mode Satu Papan Global — item otomatis menjadi node di kanvas global.</source>
+        <translation type="unfinished">Single global board mode — the item automatically becomes a node on the global canvas.</translation>
+    </message>
+    <message>
+        <source>Pilih minimal satu tujuan (Board/Kolom dan/atau Peta).</source>
+        <translation type="unfinished">Choose at least one destination (Board/Column and/or Map).</translation>
+    </message>
+    <message>
+        <source>Pilih kolom tujuan.</source>
+        <translation type="unfinished">Choose a destination column.</translation>
+    </message>
+    <message>
+        <source>Pilih papan target.</source>
+        <translation type="unfinished">Choose a target board.</translation>
+    </message>
+    <message>
+        <source>Batal</source>
+        <translation type="unfinished">Cancel</translation>
     </message>
 </context>
 <context>
@@ -97,7 +218,11 @@
     </message>
     <message>
         <source>Pindah ke kolom…</source>
-        <translation>Move to column…</translation>
+        <translation type="vanished">Move to column…</translation>
+    </message>
+    <message>
+        <source>Petakan…</source>
+        <translation>Map…</translation>
     </message>
     <message>
         <source>Hapus «%1» dari Inbox?</source>
@@ -137,7 +262,7 @@
     </message>
     <message>
         <source>Petakan</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Map</translation>
     </message>
     <message>
         <source>Aksi</source>
@@ -185,6 +310,34 @@
     </message>
     <message>
         <source>Hapus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Prioritas (opsional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rendah</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sedang</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tinggi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cari…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tidak ada hasil</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bersihkan filter</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -256,6 +409,22 @@
     <message>
         <source>Belum ada Item.</source>
         <translation>No items yet.</translation>
+    </message>
+    <message>
+        <source>Prioritas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cari…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tidak ada hasil</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bersihkan filter</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -378,6 +547,26 @@
     </message>
     <message>
         <source>Hapus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Buka kunci kanvas — boleh digeser lagi</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Kunci kanvas — tidak tergeser saat menggambar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cari…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tidak ada hasil</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bersihkan filter</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

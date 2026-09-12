@@ -27,7 +27,9 @@ QVector<int> NodeLayout::computeLevels(int n, const QVector<QVector<int>> &paren
 }
 
 QVector<NodeLayoutResult> NodeLayout::layout(const QVector<ItemData> &items,
-                                             const QVector<Edge> &edges)
+                                             const QVector<Edge> &edges,
+                                             double colPitch,
+                                             double rowPitch)
 {
     QVector<NodeLayoutResult> out;
     if (items.isEmpty())
@@ -67,8 +69,8 @@ QVector<NodeLayoutResult> NodeLayout::layout(const QVector<ItemData> &items,
             const int idx = idxs.at(i);
             NodeLayoutResult r;
             r.itemId = items.at(idx).id;
-            r.pos = QPointF(kOriginX + lv * kColumnWidth,
-                            kOriginY + i * kRowHeight);
+            r.pos = QPointF(kOriginX + lv * colPitch,
+                            kOriginY + i * rowPitch);
             out.append(r);
         }
     }

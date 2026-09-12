@@ -14,6 +14,10 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+#include <cmath>
+
+using namespace PetaIde;
+
 Repository::Repository(QObject *parent)
     : QObject(parent)
 {
@@ -63,24 +67,46 @@ void Repository::renameBoard(int boardId, const QString &name)
 
 void Repository::deleteBoard(int boardId)
 {
-    QSqlQuery q(db::handle());
+    QSqlDatabase db = db::handle();
+    db.transaction();
+    bool ok = true;
+    QSqlQuery q(db);
     q.prepare(QStringLiteral(
         "UPDATE items SET column_id = NULL, board_id = NULL, updated_at = :t "
         "WHERE column_id IN (SELECT id FROM columns WHERE board_id = :b) OR board_id = :b2"));
     q.bindValue(QStringLiteral(":t"), now());
     q.bindValue(QStringLiteral(":b"), boardId);
     q.bindValue(QStringLiteral(":b2"), boardId);
-    q.exec();
+    ok = q.exec() && ok;
     q.prepare(QStringLiteral("DELETE FROM columns WHERE board_id = :b"));
     q.bindValue(QStringLiteral(":b"), boardId);
-    q.exec();
+    ok = q.exec() && ok;
     q.prepare(QStringLiteral("DELETE FROM boards WHERE id = :b"));
     q.bindValue(QStringLiteral(":b"), boardId);
-    if (q.exec()) {
-        // Bentuk/anotasi board ikut terhapus (cascade) — undo yang merujuknya basi.
-        clearHistory();
-        emit changed();
+    ok = q.exec() && ok;
+    if (!ok) {
+        db.rollback();
+        qWarning("deleteBoard: failed: %s", qPrintable(q.lastError().text()));
+        return;
     }
+    db.commit();
+    // Bentuk/anotasi board ikut terhapus (cascade) — undo yang merujuknya basi.
+    clearHistory();
+    emit changed();
+}
+
+void Repository::clearBoardNodePositions(int boardId)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "DELETE FROM node_positions WHERE item_id IN "
+        "(SELECT id FROM items WHERE board_id = :b)"));
+    q.bindValue(QStringLiteral(":b"), boardId);
+    if (!q.exec()) {
+        qWarning("clearBoardNodePositions: failed: %s", qPrintable(q.lastError().text()));
+        return;
+    }
+    emit changed();
 }
 
 QVector<Column> Repository::columnsForBoard(int boardId) const
@@ -155,12 +181,21 @@ void Repository::moveColumn(int boardId, int columnId, int newIndex)
     ids.removeAll(columnId);
     ids.insert(qBound(0, newIndex, ids.size()), columnId);
 
+    QSqlDatabase db = db::handle();
+    db.transaction();
     q.prepare(QStringLiteral("UPDATE columns SET order_index = :o WHERE id = :id"));
+    bool ok = true;
     for (int i = 0; i < ids.size(); ++i) {
         q.bindValue(QStringLiteral(":o"), i);
         q.bindValue(QStringLiteral(":id"), ids.at(i));
-        q.exec();
+        ok = q.exec() && ok;
     }
+    if (!ok) {
+        db.rollback();
+        qWarning("moveColumn: failed: %s", qPrintable(q.lastError().text()));
+        return;
+    }
+    db.commit();
     emit changed();
 }
 
@@ -180,6 +215,7 @@ void Repository::deleteColumn(int columnId)
 QVector<ItemData> Repository::items() const
 {
     QVector<ItemData> out;
+    const QHash<int, QVector<TagData>> tagsOf = tagsByItem();
     QSqlQuery q(db::handle());
     q.exec(QStringLiteral(
         "SELECT i.id, i.column_id, i.title, i.description, i.due_date, i.due_time, "
@@ -206,14 +242,17 @@ QVector<ItemData> Repository::items() const
         it.boardId = q.value(10).isNull() ? -1 : q.value(10).toInt();
         it.boardName = q.value(11).toString();
         it.columnName = q.value(12).toString();
+        it.tags = tagsOf.value(it.id);
         out.append(it);
     }
     return out;
 }
 
 int Repository::addItem(const QString &title, const QString &description,
-                        const QDate &dueDate, const QTime &dueTime, int columnId)
+                        const QDate &dueDate, const QTime &dueTime, int columnId,
+                        int priority)
 {
+    const int p = (priority >= 1 && priority <= 3) ? priority : 1;
     int order = 0;
     if (columnId != -1) {
         QSqlQuery q(db::handle());
@@ -229,7 +268,7 @@ int Repository::addItem(const QString &title, const QString &description,
         "INSERT INTO items (column_id, board_id, title, description, due_date, due_time, "
         "priority, order_index, created_at, updated_at) "
         "VALUES (NULLIF(:c, -1), "
-        "(SELECT board_id FROM columns WHERE id = NULLIF(:c2, -1)), :t, COALESCE(:d, ''), :dd, NULLIF(:dt, ''), 1, :o, :now, :now)"));
+        "(SELECT board_id FROM columns WHERE id = NULLIF(:c2, -1)), :t, COALESCE(:d, ''), :dd, NULLIF(:dt, ''), :p, :o, :now, :now)"));
     q.bindValue(QStringLiteral(":c"), columnId);
     q.bindValue(QStringLiteral(":c2"), columnId);
     q.bindValue(QStringLiteral(":t"), title);
@@ -237,6 +276,7 @@ int Repository::addItem(const QString &title, const QString &description,
     const QDate effectiveDue = dueDate.isValid() ? dueDate : QDate::currentDate();
     q.bindValue(QStringLiteral(":dd"), effectiveDue.toString(Qt::ISODate));
     q.bindValue(QStringLiteral(":dt"), dueTime.isValid() ? dueTime.toString(QStringLiteral("HH:mm")) : QString());
+    q.bindValue(QStringLiteral(":p"), p);
     q.bindValue(QStringLiteral(":o"), order);
     q.bindValue(QStringLiteral(":now"), now());
     if (!q.exec())
@@ -246,10 +286,10 @@ int Repository::addItem(const QString &title, const QString &description,
     return id;
 }
 
-int Repository::quickAdd(const QString &title)
+int Repository::quickAdd(const QString &title, int priority)
 {
     ParseResult result = DateParser::parse(title);
-    return addItem(result.cleanTitle, QString(), result.dueDate, result.dueTime);
+    return addItem(result.cleanTitle, QString(), result.dueDate, result.dueTime, -1, priority);
 }
 
 QVariantMap Repository::parseNlp(const QString &text) const
@@ -268,7 +308,7 @@ QVariantMap Repository::parseNlp(const QString &text) const
 }
 
 int Repository::addItemNlp(const QString &text, const QString &description,
-                           const QString &dueOverride)
+                           const QString &dueOverride, int priority)
 {
     ParseResult result = DateParser::parse(text);
     if (!dueOverride.isEmpty()) {
@@ -276,7 +316,7 @@ int Repository::addItemNlp(const QString &text, const QString &description,
         if (override.isValid())
             result.dueDate = override;
     }
-    return addItem(result.cleanTitle, description, result.dueDate, result.dueTime);
+    return addItem(result.cleanTitle, description, result.dueDate, result.dueTime, -1, priority);
 }
 
 QVariantList Repository::boardColumnOptions() const
@@ -337,11 +377,24 @@ QVariantMap Repository::itemInfo(int itemId) const
         m.insert(QStringLiteral("columnId"), it.columnId);
         m.insert(QStringLiteral("boardId"), it.boardId);
         m.insert(QStringLiteral("title"), it.title);
+        m.insert(QStringLiteral("priority"), it.priority);
         m.insert(QStringLiteral("orderIndex"), it.orderIndex);
         m.insert(QStringLiteral("columnName"), it.columnName);
         m.insert(QStringLiteral("boardName"), it.boardName);
         m.insert(QStringLiteral("dueDate"),
                 it.dueDate.isValid() ? it.dueDate.toString(Qt::ISODate) : QString());
+        QVariantList tags;
+        QVariantList tagIds;
+        for (const TagData &t : it.tags) {
+            tags.append(QVariantMap({
+                { QStringLiteral("id"), t.id },
+                { QStringLiteral("name"), t.name },
+                { QStringLiteral("colorKey"), t.colorKey }
+            }));
+            tagIds.append(t.id);
+        }
+        m.insert(QStringLiteral("tags"), tags);
+        m.insert(QStringLiteral("tagIds"), tagIds);
         return m;
     }
     return QVariantMap();
@@ -360,6 +413,20 @@ void Repository::updateItem(int itemId, const QString &title, const QString &des
         q.bindValue(QStringLiteral(":dd"), dueDate.toString(Qt::ISODate));
     else
         q.bindValue(QStringLiteral(":dd"), QVariant(QVariant::String));
+    q.bindValue(QStringLiteral(":now"), now());
+    q.bindValue(QStringLiteral(":id"), itemId);
+    if (q.exec())
+        emit changed();
+}
+
+void Repository::setItemPriority(int itemId, int priority)
+{
+    if (priority < 1 || priority > 3)
+        return;
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "UPDATE items SET priority = :p, updated_at = :now WHERE id = :id"));
+    q.bindValue(QStringLiteral(":p"), priority);
     q.bindValue(QStringLiteral(":now"), now());
     q.bindValue(QStringLiteral(":id"), itemId);
     if (q.exec())
@@ -403,15 +470,20 @@ void Repository::normalizeColumnOrder(int columnId)
 
 void Repository::moveItem(int itemId, int columnId, int orderIndex)
 {
-    QSqlQuery q(db::handle());
+    QSqlDatabase db = db::handle();
+    QSqlQuery q(db);
     q.prepare(QStringLiteral("SELECT column_id, last_mapped_at FROM items WHERE id = :id"));
     q.bindValue(QStringLiteral(":id"), itemId);
     q.exec();
-    if (!q.next())
+    if (!q.next()) {
+        qWarning("moveItem: unknown item %d", itemId);
         return;
+    }
     const int oldColumn = q.value(0).isNull() ? -1 : q.value(0).toInt();
     const bool alreadyMapped = !q.value(1).isNull();
 
+    db.transaction();
+    bool ok = true;
     if (columnId != -1) {
         // Semantik final-index: orderIndex = posisi 0-based di kolom target
         // SETELAH dipindah (tidak termasuk dirinya sendiri bila kolom sama).
@@ -434,12 +506,12 @@ void Repository::moveItem(int itemId, int columnId, int orderIndex)
             q.bindValue(QStringLiteral(":last_at"), (moved && !alreadyMapped) ? QVariant(stamp) : QVariant());
             q.bindValue(QStringLiteral(":now"), stamp);
             q.bindValue(QStringLiteral(":id"), seq.at(i));
-            q.exec();
+            ok = q.exec() && ok;
         }
         // Normalisasi kolom lama SETELAH item pindah, agar kolom asal rapat
         // (tanpa lubang indeks) — sebelumnya dipanggil sebelum update sehingga
         // kolom lama berakhir [0, 2, ...].
-        if (oldColumn != -1 && oldColumn != columnId)
+        if (ok && oldColumn != -1 && oldColumn != columnId)
             normalizeColumnOrder(oldColumn);
     } else {
         q.prepare(QStringLiteral(
@@ -447,10 +519,16 @@ void Repository::moveItem(int itemId, int columnId, int orderIndex)
             "WHERE id = :id"));
         q.bindValue(QStringLiteral(":now"), now());
         q.bindValue(QStringLiteral(":id"), itemId);
-        q.exec();
-        if (oldColumn != -1)
+        ok = q.exec() && ok;
+        if (ok && oldColumn != -1)
             normalizeColumnOrder(oldColumn);
     }
+    if (!ok) {
+        db.rollback();
+        qWarning("moveItem: failed: %s", qPrintable(q.lastError().text()));
+        return;
+    }
+    db.commit();
     emit changed();
 }
 
@@ -464,6 +542,156 @@ void Repository::rescheduleItem(int itemId, const QDate &dueDate)
     q.bindValue(QStringLiteral(":id"), itemId);
     if (q.exec())
         emit changed();
+}
+
+QHash<int, QVector<TagData>> Repository::tagsByItem() const
+{
+    QHash<int, QVector<TagData>> out;
+    QSqlQuery q(db::handle());
+    q.exec(QStringLiteral(
+        "SELECT it.item_id, t.id, t.name, t.color FROM item_tags it "
+        "JOIN tags t ON t.id = it.tag_id ORDER BY t.name"));
+    while (q.next()) {
+        TagData t;
+        t.id = q.value(1).toInt();
+        t.name = q.value(2).toString();
+        t.colorKey = q.value(3).toString();
+        out[q.value(0).toInt()].append(t);
+    }
+    return out;
+}
+
+QVector<TagData> Repository::allTags() const
+{
+    QVector<TagData> out;
+    QSqlQuery q(db::handle());
+    q.exec(QStringLiteral("SELECT id, name, color FROM tags ORDER BY name"));
+    while (q.next()) {
+        TagData t;
+        t.id = q.value(0).toInt();
+        t.name = q.value(1).toString();
+        t.colorKey = q.value(2).toString();
+        out.append(t);
+    }
+    return out;
+}
+
+int Repository::addTag(const QString &name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty())
+        return -1;
+    QSqlQuery sel(db::handle());
+    sel.prepare(QStringLiteral("SELECT id FROM tags WHERE name = :n COLLATE NOCASE"));
+    sel.bindValue(QStringLiteral(":n"), trimmed);
+    sel.exec();
+    if (sel.next())
+        return sel.value(0).toInt();
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("INSERT OR IGNORE INTO tags (name) VALUES (:n)"));
+    q.bindValue(QStringLiteral(":n"), trimmed);
+    if (!q.exec())
+        return -1;
+    sel.exec();
+    if (!sel.next())
+        return -1;
+    const int id = sel.value(0).toInt();
+    emit changed();
+    return id;
+}
+
+bool Repository::renameTag(int tagId, const QString &name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty())
+        return false;
+    QSqlQuery clash(db::handle());
+    clash.prepare(QStringLiteral("SELECT id FROM tags WHERE name = :n COLLATE NOCASE AND id != :id"));
+    clash.bindValue(QStringLiteral(":n"), trimmed);
+    clash.bindValue(QStringLiteral(":id"), tagId);
+    clash.exec();
+    if (clash.next())
+        return false;
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("UPDATE tags SET name = :n WHERE id = :id"));
+    q.bindValue(QStringLiteral(":n"), trimmed);
+    q.bindValue(QStringLiteral(":id"), tagId);
+    if (!q.exec())
+        return false;
+    if (q.numRowsAffected() > 0)
+        emit changed();
+    return true;
+}
+
+void Repository::deleteTag(int tagId)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("DELETE FROM tags WHERE id = :id"));
+    q.bindValue(QStringLiteral(":id"), tagId);
+    if (q.exec())
+        emit changed();
+}
+
+void Repository::setTagColor(int tagId, const QString &colorKey)
+{
+    QString key = colorKey;
+    if (key != QStringLiteral("neutral") && key != QStringLiteral("accent")
+        && key != QStringLiteral("active") && key != QStringLiteral("danger")
+        && key != QStringLiteral("accentContent"))
+        key = QStringLiteral("neutral");
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("UPDATE tags SET color = :k WHERE id = :id"));
+    q.bindValue(QStringLiteral(":k"), key);
+    q.bindValue(QStringLiteral(":id"), tagId);
+    if (q.exec())
+        emit changed();
+}
+
+void Repository::attachTag(int itemId, int tagId)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral(
+        "INSERT OR IGNORE INTO item_tags (item_id, tag_id) VALUES (:i, :t)"));
+    q.bindValue(QStringLiteral(":i"), itemId);
+    q.bindValue(QStringLiteral(":t"), tagId);
+    if (q.exec() && q.numRowsAffected() > 0)
+        emit changed();
+}
+
+void Repository::detachTag(int itemId, int tagId)
+{
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("DELETE FROM item_tags WHERE item_id = :i AND tag_id = :t"));
+    q.bindValue(QStringLiteral(":i"), itemId);
+    q.bindValue(QStringLiteral(":t"), tagId);
+    if (q.exec() && q.numRowsAffected() > 0)
+        emit changed();
+}
+
+QVector<int> Repository::tagIdsForItem(int itemId) const
+{
+    QVector<int> out;
+    QSqlQuery q(db::handle());
+    q.prepare(QStringLiteral("SELECT tag_id FROM item_tags WHERE item_id = :i ORDER BY tag_id"));
+    q.bindValue(QStringLiteral(":i"), itemId);
+    q.exec();
+    while (q.next())
+        out.append(q.value(0).toInt());
+    return out;
+}
+
+QVariantList Repository::tagList() const
+{
+    QVariantList out;
+    const QVector<TagData> all = allTags();
+    for (const TagData &t : all) {
+        out.append(QVariantMap({
+            { QStringLiteral("id"), t.id },
+            { QStringLiteral("name"), t.name },
+            { QStringLiteral("colorKey"), t.colorKey }
+        }));
+    }
+    return out;
 }
 
 QVector<Edge> Repository::edges() const
@@ -518,7 +746,7 @@ bool Repository::addEdge(int itemId, int parentItemId, const QString &kind)
     q.bindValue(QStringLiteral(":k"), kind);
     if (!q.exec())
         return false;
-    record(CanvasHistory::Step{ CanvasHistory::AddEdge, q.lastInsertId().toInt(),
+    record(CanvasHistory::Step{ CanvasHistory::Kind::AddEdge, q.lastInsertId().toInt(),
                            QVariantMap(), edgeSnapshot(q.lastInsertId().toInt()) });
     emit changed();
     return true;
@@ -526,7 +754,7 @@ bool Repository::addEdge(int itemId, int parentItemId, const QString &kind)
 
 void Repository::deleteEdge(int edgeId)
 {
-    record(CanvasHistory::Step{ CanvasHistory::DeleteEdge, edgeId,
+    record(CanvasHistory::Step{ CanvasHistory::Kind::DeleteEdge, edgeId,
                            edgeSnapshot(edgeId), QVariantMap() });
     QSqlQuery q(db::handle());
     q.prepare(QStringLiteral("DELETE FROM item_edges WHERE id = :id"));
@@ -565,6 +793,36 @@ int Repository::addShape(int boardId, const QString &type, double x, double y,
                          double width, double height, double rotation,
                          const QString &pointsJson, const QString &styleJson)
 {
+    static const QSet<QString> validTypes = {
+        QStringLiteral("rectangle"), QStringLiteral("ellipse"),
+        QStringLiteral("triangle"), QStringLiteral("line"),
+        QStringLiteral("arrow"), QStringLiteral("freehand")
+    };
+    if (!validTypes.contains(type)) {
+        qWarning("addShape: unknown type '%s'", qPrintable(type));
+        return -1;
+    }
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(width)
+        || !std::isfinite(height) || !std::isfinite(rotation)
+        || width < 0 || height < 0) {
+        qWarning("addShape: invalid geometry");
+        return -1;
+    }
+    QJsonParseError perr;
+    if (!pointsJson.isEmpty()) {
+        QJsonDocument::fromJson(pointsJson.toUtf8(), &perr);
+        if (perr.error != QJsonParseError::NoError) {
+            qWarning("addShape: invalid pointsJson: %s", qPrintable(perr.errorString()));
+            return -1;
+        }
+    }
+    if (!styleJson.isEmpty()) {
+        QJsonDocument::fromJson(styleJson.toUtf8(), &perr);
+        if (perr.error != QJsonParseError::NoError) {
+            qWarning("addShape: invalid styleJson: %s", qPrintable(perr.errorString()));
+            return -1;
+        }
+    }
     const QString points = pointsJson.isEmpty() ? QStringLiteral("[]") : pointsJson;
     const QString style = styleJson.isEmpty() ? QStringLiteral("{}") : styleJson;
     QSqlQuery q(db::handle());
@@ -582,10 +840,12 @@ int Repository::addShape(int boardId, const QString &type, double x, double y,
     q.bindValue(QStringLiteral(":p"), points);
     q.bindValue(QStringLiteral(":s"), style);
     q.bindValue(QStringLiteral(":now"), now());
-    if (!q.exec())
+    if (!q.exec()) {
+        qWarning("addShape: insert failed: %s", qPrintable(q.lastError().text()));
         return -1;
+    }
     const int id = q.lastInsertId().toInt();
-    record(CanvasHistory::Step{ CanvasHistory::AddShape, id,
+    record(CanvasHistory::Step{ CanvasHistory::Kind::AddShape, id,
                            QVariantMap(), shapeSnapshot(id) });
     emit changed();
     return id;
@@ -595,6 +855,10 @@ void Repository::updateShapePosition(int shapeId, double x, double y,
                                      double width, double height, double rotation)
 {
     const QVariantMap before = shapeSnapshot(shapeId);
+    if (before.isEmpty()) {
+        qWarning("updateShapePosition: unknown shape %d", shapeId);
+        return;
+    }
     QSqlQuery q(db::handle());
     q.prepare(QStringLiteral(
         "UPDATE canvas_shapes SET x = :x, y = :y, width = :w, height = :h, "
@@ -612,21 +876,30 @@ void Repository::updateShapePosition(int shapeId, double x, double y,
         after[QStringLiteral("width")] = width;
         after[QStringLiteral("height")] = height;
         after[QStringLiteral("rotation")] = rotation;
-        record(CanvasHistory::Step{ CanvasHistory::EditShape, shapeId,
+        record(CanvasHistory::Step{ CanvasHistory::Kind::EditShape, shapeId,
                                before, after });
         emit changed();
+    } else {
+        qWarning("updateShapePosition: update failed: %s", qPrintable(q.lastError().text()));
     }
 }
 
 void Repository::deleteShape(int shapeId)
 {
-    record(CanvasHistory::Step{ CanvasHistory::DeleteShape, shapeId,
-                           shapeSnapshot(shapeId), QVariantMap() });
+    const QVariantMap before = shapeSnapshot(shapeId);
+    if (before.isEmpty()) {
+        qWarning("deleteShape: unknown shape %d", shapeId);
+        return;
+    }
+    record(CanvasHistory::Step{ CanvasHistory::Kind::DeleteShape, shapeId,
+                           before, QVariantMap() });
     QSqlQuery q(db::handle());
     q.prepare(QStringLiteral("DELETE FROM canvas_shapes WHERE id = :id"));
     q.bindValue(QStringLiteral(":id"), shapeId);
     if (q.exec())
         emit changed();
+    else
+        qWarning("deleteShape: delete failed: %s", qPrintable(q.lastError().text()));
 }
 
 QVariantList Repository::shapeList(int boardId) const
@@ -655,43 +928,63 @@ QVariantList Repository::shapeList(int boardId) const
 
 int Repository::convertShapeToEntity(int shapeId, const QString &title)
 {
-    QSqlQuery q(db::handle());
+    if (title.trimmed().isEmpty()) {
+        qWarning("convertShapeToEntity: empty title");
+        return -1;
+    }
+    QSqlDatabase db = db::handle();
+    QSqlQuery q(db);
     q.prepare(QStringLiteral(
         "SELECT board_id, x, y, width, height, linked_item_id FROM canvas_shapes WHERE id = :id"));
     q.bindValue(QStringLiteral(":id"), shapeId);
     q.exec();
-    if (!q.next() || !q.value(5).isNull())
+    if (!q.next() || !q.value(5).isNull()) {
+        qWarning("convertShapeToEntity: unknown or already linked shape %d", shapeId);
         return -1;
+    }
 
     const int shapeBoardId = q.value(0).isNull() ? -1 : q.value(0).toInt();
     const double cx = q.value(1).toDouble() + q.value(3).toDouble() / 2.0;
     const double cy = q.value(2).toDouble() + q.value(4).toDouble() / 2.0;
 
+    db.transaction();
     const int itemId = addItem(title, QString(), QDate::currentDate());
-    if (itemId <= 0)
+    if (itemId <= 0) {
+        db.rollback();
+        qWarning("convertShapeToEntity: addItem failed");
         return -1;
+    }
 
+    bool ok = true;
     if (shapeBoardId != -1) {
-        QSqlQuery u(db::handle());
+        QSqlQuery u(db);
         u.prepare(QStringLiteral("UPDATE items SET board_id = :b WHERE id = :i"));
         u.bindValue(QStringLiteral(":b"), shapeBoardId);
         u.bindValue(QStringLiteral(":i"), itemId);
-        if (!u.exec()) {
-            deleteItem(itemId);
-            return -1;
-        }
+        ok = u.exec() && ok;
+    }
+    if (!ok) {
+        db.rollback();
+        deleteItem(itemId);
+        qWarning("convertShapeToEntity: board update failed, rolled back");
+        return -1;
     }
     m_suppressHistory = true;
     setNodePosition(itemId, QPointF(cx, cy));
     m_suppressHistory = false;
 
-    QSqlQuery l(db::handle());
+    QSqlQuery l(db);
     l.prepare(QStringLiteral("UPDATE canvas_shapes SET linked_item_id = :i WHERE id = :id"));
     l.bindValue(QStringLiteral(":i"), itemId);
     l.bindValue(QStringLiteral(":id"), shapeId);
-    if (!l.exec())
+    if (!l.exec()) {
+        qWarning("convertShapeToEntity: link failed: %s", qPrintable(l.lastError().text()));
+        db.rollback();
+        deleteItem(itemId);
         return -1;
-    record(CanvasHistory::Step{ CanvasHistory::ConvertShape, itemId,
+    }
+    db.commit();
+    record(CanvasHistory::Step{ CanvasHistory::Kind::ConvertShape, itemId,
                            shapeSnapshot(shapeId),
                            QVariantMap{
                                { QStringLiteral("item"), itemSnapshot(itemId) },
@@ -700,6 +993,7 @@ int Repository::convertShapeToEntity(int shapeId, const QString &title)
                                { QStringLiteral("posX"), cx },
                                { QStringLiteral("posY"), cy } } });
     emit changed();
+    emit historyChanged();
     return itemId;
 }
 
@@ -712,6 +1006,52 @@ QPointF Repository::nodePosition(int itemId) const
     if (q.next())
         return QPointF(q.value(0).toDouble(), q.value(1).toDouble());
     return QPointF();
+}
+
+void Repository::mapItemToMap(int itemId, int targetBoardId, const QPointF &pos)
+{
+    QSqlDatabase db = db::handle();
+    db.transaction();
+    bool ok = true;
+    if (targetBoardId > 0) {
+        QSqlQuery q(db);
+        q.prepare(QStringLiteral(
+            "UPDATE items SET board_id = :b, updated_at = :now "
+            "WHERE id = :id"));
+        q.bindValue(QStringLiteral(":b"), targetBoardId);
+        q.bindValue(QStringLiteral(":now"), now());
+        q.bindValue(QStringLiteral(":id"), itemId);
+        ok = q.exec() && ok;
+    }
+
+    QPointF p = pos;
+    if (p.isNull()) {
+        // QPointF(0,0) tak bisa membedakan "tanpa posisi" vs posisi kanonik yang
+        // sah. Kalau node sudah punya posisi terekam, jangan ditimpa — biarkan
+        // apa adanya; kalau belum ada, isi posisi default (fallback formula).
+        if (hasNodePosition(itemId))
+            p = nodePosition(itemId);
+        else
+            p = QPointF(1500.0 + (itemId * 97) % 600 - 300.0,
+                        1500.0 + (itemId * 53) % 400 - 200.0);
+    }
+    {
+        QSqlQuery q(db);
+        q.prepare(QStringLiteral(
+            "INSERT INTO node_positions (item_id, x, y) VALUES (:i, :x, :y) "
+            "ON CONFLICT(item_id) DO UPDATE SET x = excluded.x, y = excluded.y"));
+        q.bindValue(QStringLiteral(":i"), itemId);
+        q.bindValue(QStringLiteral(":x"), p.x());
+        q.bindValue(QStringLiteral(":y"), p.y());
+        ok = q.exec() && ok;
+    }
+    if (!ok) {
+        db.rollback();
+        qWarning("mapItemToMap: failed: %s", qPrintable(db.lastError().text()));
+        return;
+    }
+    db.commit();
+    emit changed();
 }
 
 bool Repository::hasNodePosition(int itemId) const
@@ -736,14 +1076,18 @@ void Repository::setNodePosition(int itemId, const QPointF &pos)
     q.bindValue(QStringLiteral(":y"), pos.y());
     if (!q.exec() || m_suppressHistory)
         return;
-    record(CanvasHistory::Step{ CanvasHistory::NodeMove, itemId, before,
+    record(CanvasHistory::Step{ CanvasHistory::Kind::NodeMove, itemId, before,
                            QVariantMap{ { QStringLiteral("x"), pos.x() },
                                         { QStringLiteral("y"), pos.y() } } });
     emit changed();
 }
 
-void Repository::layoutMap(int boardId)
+void Repository::layoutMap(int boardId, double colPitch, double rowPitch)
 {
+    if (!std::isfinite(colPitch) || !std::isfinite(rowPitch) || colPitch <= 0 || rowPitch <= 0) {
+        qWarning("layoutMap: invalid pitch %f x %f", colPitch, rowPitch);
+        return;
+    }
     QVector<ItemData> visible;
     if (boardId == -1) {
         visible = items();
@@ -757,7 +1101,27 @@ void Repository::layoutMap(int boardId)
         return;
 
     const QVector<Edge> allEdges = edges();
-    const auto positioned = NodeLayout::layout(visible, allEdges);
+    auto positioned = NodeLayout::layout(visible, allEdges, colPitch, rowPitch);
+
+    // Mitigasi #4(b): tiap board mulai dari origin berbeda (langkah 40px per
+    // urutan board, ORDER BY id) supaya "Susun rapi" di dua board tidak
+    // melahirkan node di koordinat identik yang lalu tumpuk di kanvas Global
+    // (satu ruang koordinat bersama, ADR-0004). Board pertama (indeks 0) dan
+    // layout global (boardId == -1) tidak bergeser — perilaku lama utuh.
+    if (boardId != -1) {
+        const QVector<Board> bl = boards();
+        double shiftX = 0.0;
+        for (int i = 0; i < bl.size(); ++i) {
+            if (bl.at(i).id == boardId) {
+                shiftX = i * 40.0;
+                break;
+            }
+        }
+        if (shiftX != 0.0) {
+            for (auto &r : positioned)
+                r.pos.setX(r.pos.x() + shiftX);
+        }
+    }
 
     QVariantList beforeList;
     for (const auto &r : qAsConst(positioned)) {
@@ -776,18 +1140,27 @@ void Repository::layoutMap(int boardId)
             { QStringLiteral("y"), r.pos.y() } });
     }
 
-    QSqlQuery q(db::handle());
+    QSqlDatabase db = db::handle();
+    db.transaction();
+    QSqlQuery q(db);
     q.prepare(QStringLiteral(
         "INSERT INTO node_positions (item_id, x, y) VALUES (:i, :x, :y) "
         "ON CONFLICT(item_id) DO UPDATE SET x = excluded.x, y = excluded.y"));
+    bool ok = true;
     for (const auto &r : qAsConst(positioned)) {
         q.bindValue(QStringLiteral(":i"), r.itemId);
         q.bindValue(QStringLiteral(":x"), r.pos.x());
         q.bindValue(QStringLiteral(":y"), r.pos.y());
-        q.exec();
+        ok = q.exec() && ok;
     }
+    if (!ok) {
+        db.rollback();
+        qWarning("layoutMap: failed: %s", qPrintable(q.lastError().text()));
+        return;
+    }
+    db.commit();
     record(CanvasHistory::Step{
-        CanvasHistory::Layout, boardId,
+        CanvasHistory::Kind::Layout, boardId,
         QVariantMap{ { QStringLiteral("positions"), beforeList } },
         QVariantMap{ { QStringLiteral("positions"), afterList } } });
     emit changed();
@@ -805,9 +1178,7 @@ bool Repository::undo()
     if (!m_history.canUndo())
         return false;
     const CanvasHistory::Step step = m_history.popUndo();
-    m_applyingHistory = true;
     applyStep(step, /*forward=*/false);
-    m_applyingHistory = false;
     m_history.pushRedo(step);
     emit changed();
     emit historyChanged();
@@ -819,9 +1190,7 @@ bool Repository::redo()
     if (!m_history.canRedo())
         return false;
     const CanvasHistory::Step step = m_history.popRedo();
-    m_applyingHistory = true;
     applyStep(step, /*forward=*/true);
-    m_applyingHistory = false;
     m_history.pushUndoFromRedo(step);
     emit changed();
     emit historyChanged();
@@ -1001,8 +1370,8 @@ void Repository::applyStep(const CanvasHistory::Step &step, bool forward)
     Q_UNUSED(dst)
 
     switch (step.kind) {
-    case CanvasHistory::AddShape:
-    case CanvasHistory::DeleteShape:
+    case CanvasHistory::Kind::AddShape:
+    case CanvasHistory::Kind::DeleteShape:
         if (src.isEmpty()) {
             QSqlQuery q(db::handle());
             q.prepare(QStringLiteral("DELETE FROM canvas_shapes WHERE id = :id"));
@@ -1012,7 +1381,7 @@ void Repository::applyStep(const CanvasHistory::Step &step, bool forward)
             restoreShapeRow(src);
         }
         break;
-    case CanvasHistory::EditShape: {
+    case CanvasHistory::Kind::EditShape: {
         QSqlQuery q(db::handle());
         q.prepare(QStringLiteral(
             "UPDATE canvas_shapes SET x = :x, y = :y, width = :w, height = :h, "
@@ -1026,7 +1395,7 @@ void Repository::applyStep(const CanvasHistory::Step &step, bool forward)
         q.exec();
         break;
     }
-    case CanvasHistory::ConvertShape:
+    case CanvasHistory::Kind::ConvertShape:
         if (!forward) {
             // undo: hapus item — FK SET NULL melepas relasi shape
             QSqlQuery q(db::handle());
@@ -1047,14 +1416,14 @@ void Repository::applyStep(const CanvasHistory::Step &step, bool forward)
             q.exec();
         }
         break;
-    case CanvasHistory::NodeMove:
+    case CanvasHistory::Kind::NodeMove:
         if (src.isEmpty())
             removePosition(step.id);
         else
             upsertPosition(step.id, src.value(QStringLiteral("x")).toDouble(),
                            src.value(QStringLiteral("y")).toDouble());
         break;
-    case CanvasHistory::Layout: {
+    case CanvasHistory::Kind::Layout: {
         const QVariantList rows = src.value(QStringLiteral("positions")).toList();
         QSet<int> targetIds;
         for (const QVariant &v : rows) {
@@ -1073,8 +1442,8 @@ void Repository::applyStep(const CanvasHistory::Step &step, bool forward)
         }
         break;
     }
-    case CanvasHistory::AddEdge:
-    case CanvasHistory::DeleteEdge:
+    case CanvasHistory::Kind::AddEdge:
+    case CanvasHistory::Kind::DeleteEdge:
         if (src.isEmpty()) {
             QSqlQuery q(db::handle());
             q.prepare(QStringLiteral("DELETE FROM item_edges WHERE id = :id"));

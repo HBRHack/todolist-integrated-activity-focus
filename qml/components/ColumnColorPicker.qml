@@ -13,19 +13,12 @@ Item {
     readonly property var keys: ["accent", "danger", "active", "accentContent"]
 
     height: Theme.smallControlHeight
+    implicitWidth: swatchRow.width
 
     readonly property int swatchW: 18
 
-    function colorFor(key) {
-        switch (key) {
-        case "danger": return Theme.colorDanger
-        case "active": return Theme.colorActive
-        case "accentContent": return Theme.colorAccentContent
-        default: return Theme.colorAccent
-        }
-    }
-
     Row {
+        id: swatchRow
         anchors.centerIn: parent
         spacing: Theme.spacingSmall
 
@@ -37,7 +30,7 @@ Item {
                 width: picker.swatchW
                 height: picker.swatchW
                 radius: 0
-                color: picker.colorFor(modelData)
+                color: Theme.colorKeyToToken(modelData)
                 border.color: selected ? Theme.colorText : Theme.colorBorder
                 border.width: selected ? 3 : Theme.borderWidthThin
 

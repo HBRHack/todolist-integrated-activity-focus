@@ -4,10 +4,21 @@
 #include <QSqlError>
 #include <QDateTime>
 #include <QVariant>
+#include <QSet>
 
 namespace db {
 
 static QString s_connectionName;
+
+static QSet<QString> tableColumns(const QString &table)
+{
+    QSet<QString> cols;
+    QSqlQuery q(handle());
+    q.exec(QStringLiteral("PRAGMA table_info(%1)").arg(table));
+    while (q.next())
+        cols.insert(q.value(1).toString());
+    return cols;
+}
 
 bool open(const QString &path, QString *error)
 {
@@ -83,7 +94,7 @@ bool initSchema()
     if (schemaVersion() < 4) {
         QSqlQuery q(handle());
         if (!q.exec(QStringLiteral(
-                "CREATE TABLE canvas_shapes ("
+                "CREATE TABLE IF NOT EXISTS canvas_shapes ("
                 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                 "board_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,"
                 "type TEXT NOT NULL,"
@@ -101,7 +112,44 @@ bool initSchema()
         }
         q.exec(QStringLiteral("PRAGMA user_version = 4"));
     }
-    return schemaVersion() == 4;
+    if (schemaVersion() < 5) {
+        QSqlQuery q(handle());
+        if (!q.exec(QStringLiteral(
+                "CREATE TABLE IF NOT EXISTS tags ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "name TEXT NOT NULL UNIQUE COLLATE NOCASE,"
+                "color TEXT NOT NULL DEFAULT 'neutral')"))) {
+            qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+            return false;
+        }
+        if (!q.exec(QStringLiteral(
+                "CREATE TABLE IF NOT EXISTS item_tags ("
+                "item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,"
+                "tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,"
+                "PRIMARY KEY (item_id, tag_id))"))) {
+            qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+            return false;
+        }
+        const QSet<QString> cols = tableColumns(QStringLiteral("tags"));
+        if (!cols.contains(QStringLiteral("color"))) {
+            if (!q.exec(QStringLiteral(
+                    "ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT 'neutral'"))) {
+                qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+                return false;
+            }
+        }
+        // Tegakkan NOCASE di level DB juga untuk DB lama yang lahir tanpa
+        // COLLATE NOCASE (createV1Schema lama): index unik case-insensitive.
+        // App-layer tetap cek SELECT ... COLLATE NOCASE sebagai pertahanan ganda.
+        if (!q.exec(QStringLiteral(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name_nocase "
+                "ON tags(name COLLATE NOCASE)"))) {
+            qCritical("Schema error: %s", qPrintable(q.lastError().text()));
+            return false;
+        }
+        q.exec(QStringLiteral("PRAGMA user_version = 5"));
+    }
+    return schemaVersion() == 5;
 }
 
 bool createV1Schema()
@@ -135,7 +183,8 @@ bool createV1Schema()
         QStringLiteral(
             "CREATE TABLE tags ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "name TEXT NOT NULL UNIQUE)"),
+            "name TEXT NOT NULL UNIQUE COLLATE NOCASE,"
+            "color TEXT NOT NULL DEFAULT 'neutral')"),
         QStringLiteral(
             "CREATE TABLE item_tags ("
             "item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,"

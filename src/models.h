@@ -24,6 +24,13 @@ struct Column
     QString colorKey = QStringLiteral("accent");
 };
 
+struct TagData
+{
+    int id = -1;
+    QString name;
+    QString colorKey = QStringLiteral("neutral");
+};
+
 struct ItemData
 {
     int id = -1;
@@ -39,6 +46,7 @@ struct ItemData
     QDateTime lastMappedAt;
     QString boardName;
     QString columnName;
+    QVector<TagData> tags;
 };
 
 struct Edge

@@ -328,6 +328,7 @@ Rectangle {
                                         anchors.leftMargin: 7
                                         anchors.rightMargin: 4
                                         text: mitem.title
+                                        textFormat: Text.PlainText
                                         elide: Text.ElideRight
                                         font.family: Theme.fontFamilyBody
                                         font.pixelSize: Theme.fontSizeCaption

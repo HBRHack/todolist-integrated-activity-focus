@@ -1,10 +1,34 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../theme"
 import "../components"
 
 Item {
+    id: root
     property var settings: typeof appSettings !== "undefined" ? appSettings : null
+    property var tags: []
+
+    function reloadTags() {
+        tags = repo.tagList()
+    }
+
+    function addTag() {
+        var name = newTagInput.text.trim()
+        if (name.length === 0)
+            return
+        repo.addTag(name)
+        newTagInput.text = ""
+    }
+
+    Connections {
+        target: typeof repo !== "undefined" ? repo : null
+        function onChanged() {
+            root.reloadTags()
+        }
+    }
+
+    Component.onCompleted: root.reloadTags()
 
     Rectangle {
         anchors.fill: parent
@@ -169,7 +193,134 @@ Item {
             color: Theme.colorMuted
         }
 
-        // ===== Bahasa =====
+        // ===== Tag =====
+        Text {
+            text: qsTr("Tag")
+            font.family: Theme.fontFamilyDisplay
+            font.pixelSize: Theme.fontSizeMedium
+            font.bold: true
+            font.capitalization: Font.AllUppercase
+            font.letterSpacing: Theme.letterSpacingDisplay
+            color: Theme.colorText
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: Theme.borderWidth
+            color: Theme.colorBorder
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingSmall
+
+            TextField {
+                id: newTagInput
+                objectName: "addTagInput"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.controlHeight
+                placeholderText: qsTr("Tag baru…")
+                placeholderTextColor: Theme.colorMuted
+                color: Theme.colorText
+                padding: 8
+                font.family: Theme.fontFamilyBody
+                font.pixelSize: Theme.fontSizeSmall
+                background: Rectangle {
+                    radius: 0
+                    color: Theme.colorSurfaceAlt
+                    border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                    border.width: Theme.borderWidth
+                }
+                onAccepted: root.addTag()
+            }
+
+            PrimaryButton {
+                objectName: "addTagButton"
+                text: qsTr("Tambah")
+                onClicked: root.addTag()
+            }
+        }
+
+        Repeater {
+            id: tagsListRepeater
+            model: root.tags
+
+            RowLayout {
+                property int tagIndex: index
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Text {
+                    Layout.preferredWidth: 24
+                    text: "0" + (tagIndex + 1)
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    color: Theme.colorMuted
+                }
+
+                TextField {
+                    objectName: "tagRename_" + modelData.id
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Theme.controlHeight
+                    verticalAlignment: Text.AlignVCenter
+                    padding: 8
+                    text: modelData.name
+                    font.family: Theme.fontFamilyBody
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.colorText
+                    background: Rectangle {
+                        radius: 0
+                        color: Theme.colorSurfaceAlt
+                        border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
+                        border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                    }
+                    onEditingFinished: {
+                        var name = text.trim()
+                        if (name.length > 0)
+                            repo.renameTag(modelData.id, name)
+                    }
+                }
+
+                Row {
+                    spacing: Theme.spacingTiny
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Repeater {
+                        model: ["neutral", "accent", "active", "danger", "accentContent"]
+
+                        Rectangle {
+                            readonly property bool selected: modelData
+                                === tagsListRepeater.model[tagIndex].colorKey
+                            objectName: "tagColor_" + modelData + "_" + tagsListRepeater.model[tagIndex].id
+                            width: 18
+                            height: 18
+                            radius: 0
+                            color: Theme.colorKeyToToken(modelData)
+                            border.color: selected ? Theme.colorText : Theme.colorBorder
+                            border.width: selected ? 2 : Theme.borderWidthThin
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: repo.setTagColor(tagsListRepeater.model[tagIndex].id, modelData)
+                            }
+                        }
+                    }
+                }
+
+                SquareToolButton {
+                    objectName: "tagDelete_" + modelData.id
+                    text: "✕"
+                    danger: true
+                    width: Theme.smallControlHeight
+                    height: Theme.smallControlHeight
+                    onClicked: repo.deleteTag(modelData.id)
+                }
+            }
+        }
+
         Text {
             text: qsTr("Bahasa")
             font.family: Theme.fontFamilyDisplay

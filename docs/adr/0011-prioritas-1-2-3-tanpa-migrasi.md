@@ -1,0 +1,3 @@
+# Skala Prioritas: 1/2/3 (Rendah/Sedang/Tinggi), default 1, tanpa migrasi
+
+Keputusan: `items.priority` dipetakan **1 = Rendah, 2 = Sedang, 3 = Tinggi**, dengan default `1` (Rendah) untuk item baru. Tidak ada migrasi nilai: seluruh data lama (semua `priority = 1`) terbaca jujur sebagai "Rendah" — item lama tidak pernah diberi prioritas, sehingga tidak boleh tiba-tiba tampil "Sedang" (alternatif enum 0/1/2 ditolak justru karena memetakan data lama ke level yang salah). Default stay berada di sisi repository (`addItem`/`addItemNlp`/`quickAdd` sekarang menulis literal `1`; diganti parameter berdefault 1), `itemModel` role `priority` sudah ada — tidak ada perubahan skema. Sort di ViewList memakai urutan 3→2→1 (Tinggi dulu), tie-break tetap urutan existing.

@@ -1,5 +1,7 @@
 #include "mapproxymodel.h"
 
+#include "itemfilter.h"
+
 MapProxyModel::MapProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent)
 {
@@ -24,10 +26,45 @@ void MapProxyModel::setBoardId(int id)
     }
 }
 
+void MapProxyModel::setFilterText(const QString &text)
+{
+    if (m_filterText == text)
+        return;
+    m_filterText = text;
+    invalidateFilter();
+    emit filterChanged();
+}
+
+void MapProxyModel::setFilterPriorities(const QVariantList &list)
+{
+    if (m_filterPriorities == list)
+        return;
+    m_filterPriorities = list;
+    invalidateFilter();
+    emit filterChanged();
+}
+
+void MapProxyModel::setFilterTagIds(const QVariantList &list)
+{
+    if (m_filterTagIds == list)
+        return;
+    m_filterTagIds = list;
+    invalidateFilter();
+    emit filterChanged();
+}
+
 bool MapProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
+    if (!sourceModel())
+        return false;
     const QModelIndex idx = sourceModel()->index(sourceRow, 0, sourceParent);
     if (!idx.isValid())
+        return false;
+    const auto *src = qobject_cast<const ItemModel *>(sourceModel());
+    if (!src)
+        return false;
+    if (!ItemFilter::matches(src->itemAt(sourceRow),
+                             m_filterText, m_filterPriorities, m_filterTagIds))
         return false;
     if (m_boardId == -1)
         return true;

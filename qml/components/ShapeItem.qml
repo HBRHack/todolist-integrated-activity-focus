@@ -33,16 +33,21 @@ Item {
     readonly property real drawW: Math.max(root.width, 1)
     readonly property real drawH: Math.max(root.height, 1)
 
+    // Warna style bentuk: token khusus gaya (surface/border/text/muted)
+    // diselesaikan lokal; color-key semantik (accent/danger/...) didelegasikan
+    // ke Theme.colorKeyToToken sebagai satu sumber (DESIGN.md Color-key).
     function tokenColor(token, fallback) {
         switch (token) {
-        case "accent": return Theme.colorAccent
-        case "border": return Theme.colorBorder
         case "surface": return Theme.colorSurface
         case "surfaceAlt": return Theme.colorSurfaceAlt
+        case "border": return Theme.colorBorder
         case "text": return Theme.colorText
         case "muted": return Theme.colorMuted
-        case "accentContent": return Theme.colorAccentContent
-        case "danger": return Theme.colorDanger
+        case "accent":
+        case "danger":
+        case "active":
+        case "accentContent":
+        case "neutral": return Theme.colorKeyToToken(token)
         default:
             return fallback ? tokenColor(fallback, "") : "transparent"
         }

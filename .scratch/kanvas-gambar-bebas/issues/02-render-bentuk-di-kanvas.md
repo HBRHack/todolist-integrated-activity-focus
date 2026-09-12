@@ -32,3 +32,10 @@ ditunda). Code review dua sumbu dijalankan: Standards 0 hard violation,
 5 judgement/smell (switch per-tipe shapeType, naming badge/`pts` → sudah
 dirapikan, spacing literal → `Theme.spacingTiny`); Spec: checklist 1–4
 terpenuhi, no scope creep, tes tertunda nota.
+
+## Temuan audit istilah (2026-09-11, tanpa ubah kode)
+
+- `Shape*`/`shape_*` vs glosarium: **COMPLIANT, bukan pelanggaran** — headword `CONTEXT.md` baris 47 adalah "**Bentuk (Shape)**", jadi Shape adalah padanan EN yang disahkan (Avoid lowercase baris 49 membidik pemakaian kasual). `ShapeItem.qml`, struct `CanvasShape` (`src/models.h`), `objectName` `shape_<id>`/`shapePreview`/`shapeDeleteBtn`/`shapeResizeHandle_`/`shapeRotateHandle_`/`shapeLinkedBadge_` sah penuh, jangan rename, tak perlu pengecualian. (Koreksi 2026-09-11: versi sebelumnya menulis "grandfathered" — keliru, ini compliant by design.)
+- Delegate node/edge/shape BACA role campur gaya: node pakai bare role (`text: title`, `priority: priority` — `ViewMap.qml:920-934`) sementara Inbox/List pakai `model.title`/`model.priority` (aturan qt-qml: selalu `model.<role>`). Pola pengaman §7.22 (`property int nodeId: itemId`, `ViewMap.qml:886`) baru ada di node — kartu Kanban belum punya padanan (`cardId`), masih mengandalkan scope (rapuh).
+- Badge `boardName` di node (`ViewMap.qml:955-957`) kini hanya tampil saat kanvas campuran (`selectedBoardId === -1`, mitigasi #4a) — label board per node, bukan per papan.
+- `linked`/`linkedItemId`/`link failed` (role, `ViewMap.qml:810`, `repository.cpp:981`): **COMPLIANT** — glosarium sendiri menulis "yang ter-**link**" (`CONTEXT.md` baris 56) dan semuanya internal, bukan istilah user. (Koreksi 2026-09-11: sebelumnya hanya "biarkan".)

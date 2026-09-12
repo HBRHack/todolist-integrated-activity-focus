@@ -52,12 +52,64 @@ Rectangle {
         applyMode()
     }
 
+    property var tagList: []
+    property int newPriority: 1
+
+    function reloadTags() {
+        tagList = repo.tagList()
+    }
+
     function applyMode() {
         var per = typeof appSettings !== "undefined" && appSettings
             && appSettings.inboxMode === "perboard"
         perBoardMode = per
         inboxModel.perBoard = per
         inboxModel.boardId = per ? selectedBoardId : -1
+    }
+
+    property string filterQuery: ""
+    property var filterPriorities: []
+    property var filterTagIds: []
+    property bool hasActiveFilter: filterQuery.length > 0
+        || filterPriorities.length > 0 || filterTagIds.length > 0
+
+    function applyQuery(query) {
+        filterQuery = query
+        inboxModel.filterText = query
+    }
+
+    function togglePriorityFilter(value) {
+        var out = []
+        for (var i = 0; i < filterPriorities.length; ++i) {
+            if (filterPriorities[i] !== value)
+                out.push(filterPriorities[i])
+        }
+        if (out.length === filterPriorities.length)
+            out.push(value)
+        filterPriorities = out
+        inboxModel.filterPriorities = filterPriorities
+    }
+
+    function toggleTagFilter(tagId) {
+        var out = []
+        for (var i = 0; i < filterTagIds.length; ++i) {
+            if (filterTagIds[i] !== tagId)
+                out.push(filterTagIds[i])
+        }
+        if (out.length === filterTagIds.length)
+            out.push(tagId)
+        filterTagIds = out
+        inboxModel.filterTagIds = filterTagIds
+    }
+
+    function clearFilters() {
+        searchField.text = ""
+        filterQuery = ""
+        filterPriorities = []
+        filterTagIds = []
+        inboxModel.filterText = ""
+        inboxModel.filterPriorities = []
+        inboxModel.filterTagIds = []
     }
 
     function openAddDialog() {
@@ -89,6 +141,7 @@ Rectangle {
         addDescriptionField.text = ""
         addNlpPreview.visible = false
         addErrorHint.visible = false
+        root.newPriority = 1
     }
 
     function updateNlpPreview() {
@@ -120,7 +173,13 @@ Rectangle {
             return
         }
         addErrorHint.visible = false
-        repo.addItemNlp(txt, addDescriptionField.text.trim(), addDateField.text.trim())
+        var id = repo.addItemNlp(txt, addDescriptionField.text.trim(),
+                                 addDateField.text.trim(), root.newPriority)
+        if (id <= 0) {
+            addErrorHint.text = qsTr("Gagal menyimpan (database penuh/terkunci).")
+            addErrorHint.visible = true
+            return
+        }
         resetAddForm()
         addDialog.close()
     }
@@ -138,6 +197,7 @@ Rectangle {
         function onChanged() {
             root.refreshOptions()
             root.reloadBoards()
+            root.reloadTags()
         }
     }
 
@@ -151,6 +211,7 @@ Rectangle {
     Component.onCompleted: {
         refreshOptions()
         reloadBoards()
+        reloadTags()
         applyMode()
     }
 
@@ -185,6 +246,14 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
+            SearchField {
+                id: searchField
+                objectName: "searchField"
+                Layout.preferredWidth: 240
+                placeholder: qsTr("Cari…")
+                onSearchRequested: root.applyQuery(query)
+            }
+
             PrimaryButton {
                 objectName: "addDataButton"
                 text: qsTr("Tambah Data")
@@ -208,6 +277,16 @@ Rectangle {
                     onClicked: root.selectBoard(modelData.id)
                 }
             }
+        }
+
+        // Bar filter Prioritas + Tag — chip multi-toggle lintas view
+        FilterChipRow {
+            Layout.fillWidth: true
+            tags: root.tagList
+            activePriorities: root.filterPriorities
+            activeTagIds: root.filterTagIds
+            onPriorityToggled: root.togglePriorityFilter(value)
+            onTagToggled: root.toggleTagFilter(tagId)
         }
 
         // Header tabel — label kolom hairline
@@ -343,15 +422,33 @@ delegate: Item {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    Text {
+                    PriorityBadge {
+                        objectName: "prioCell_" + itemId
+                        priority: model.priority
+                    }
+
+                    RowLayout {
+                        id: tagRow
+                        property var rowTags: model.tags
                         Layout.fillWidth: true
-                        text: title
-                        elide: Text.ElideRight
-                        font.family: Theme.fontFamilyBody
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
-                        color: Theme.colorText
-                        verticalAlignment: Text.AlignVCenter
+                        spacing: Theme.spacingTiny
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: model.title
+                            textFormat: Text.PlainText
+                            elide: Text.ElideRight
+                            font.family: Theme.fontFamilyBody
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            color: Theme.colorText
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        InlineTagRow {
+                            tags: tagRow.rowTags
+                            maxChips: 2
+                        }
                     }
 
                     Text {
@@ -373,17 +470,12 @@ delegate: Item {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    SelectBox {
+                    PrimaryButton {
+                        objectName: "promoteBtn_" + itemId
                         Layout.preferredWidth: 220
                         Layout.preferredHeight: Theme.smallControlHeight
-                        placeholderText: qsTr("Pindah ke kolom…")
-                        model: root.boardOptions
-                        textRole: "label"
-                        onActivated: {
-                            if (index >= 0)
-                                repo.moveItem(itemId, root.boardOptions[index].columnId, 0)
-                            currentIndex = -1
-                        }
+                        text: qsTr("Petakan…")
+                        onClicked: detailPopup.openPromote(itemId)
                     }
 
                     RowLayout {
@@ -410,9 +502,31 @@ delegate: Item {
                 }
             }
 
+            Column {
+                anchors.centerIn: parent
+                visible: root.hasActiveFilter && listView.count === 0
+                spacing: Theme.spacingMedium
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTr("Tidak ada hasil")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                    color: Theme.colorMuted
+                }
+
+                PrimaryButton {
+                    objectName: "clearFilter"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTr("Bersihkan filter")
+                    onClicked: root.clearFilters()
+                }
+            }
+
             Text {
                 anchors.centerIn: parent
-                visible: listView.count === 0
+                visible: !root.hasActiveFilter && listView.count === 0
                 text: qsTr("Tidak ada Item di Inbox. Tekan «Tambah Data» untuk menangkap kegiatan.")
                 font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeMedium
@@ -568,6 +682,37 @@ delegate: Item {
                     color: Theme.colorSurfaceAlt
                     border.color: parent.activeFocus ? Theme.colorAccent : Theme.colorBorder
                     border.width: parent.activeFocus ? 3 : Theme.borderWidth
+                }
+            }
+
+            Text {
+                text: qsTr("Prioritas (opsional)")
+                font.family: Theme.fontFamilyMono
+                font.pixelSize: Theme.fontSizeSmall
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                color: Theme.colorText
+            }
+
+            Row {
+                spacing: Theme.spacingTiny
+
+                Chip {
+                    text: qsTr("Rendah")
+                    active: root.newPriority === 1
+                    onClicked: root.newPriority = 1
+                }
+
+                Chip {
+                    text: qsTr("Sedang")
+                    active: root.newPriority === 2
+                    onClicked: root.newPriority = 2
+                }
+
+                Chip {
+                    text: qsTr("Tinggi")
+                    active: root.newPriority === 3
+                    onClicked: root.newPriority = 3
                 }
             }
 

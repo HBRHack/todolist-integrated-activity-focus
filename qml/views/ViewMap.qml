@@ -122,12 +122,67 @@ Rectangle {
         applyFilter()
     }
 
+    property string filterQuery: ""
+    property var filterPriorities: []
+    property var filterTagIds: []
+    property var tagList: []
+
+    property bool hasActiveFilter: filterQuery.length > 0
+        || filterPriorities.length > 0 || filterTagIds.length > 0
+
+    function reloadTags() {
+        root.tagList = repo.tagList()
+    }
+
+    function applyQuery(query) {
+        filterQuery = query
+        mapProxy.filterText = query
+    }
+
+    function togglePriorityFilter(value) {
+        var out = []
+        for (var i = 0; i < filterPriorities.length; ++i) {
+            if (filterPriorities[i] !== value)
+                out.push(filterPriorities[i])
+        }
+        if (out.length === filterPriorities.length)
+            out.push(value)
+        filterPriorities = out
+        mapProxy.filterPriorities = filterPriorities
+    }
+
+    function toggleTagFilter(tagId) {
+        var out = []
+        for (var i = 0; i < filterTagIds.length; ++i) {
+            if (filterTagIds[i] !== tagId)
+                out.push(filterTagIds[i])
+        }
+        if (out.length === filterTagIds.length)
+            out.push(tagId)
+        filterTagIds = out
+        mapProxy.filterTagIds = filterTagIds
+    }
+
+    function clearFilters() {
+        searchField.text = ""
+        filterQuery = ""
+        filterPriorities = []
+        filterTagIds = []
+        mapProxy.filterText = ""
+        mapProxy.filterPriorities = []
+        mapProxy.filterTagIds = []
+    }
+
     function setMapMode(mode) {
         appSettings.mapMode = mode
     }
 
     function susunRapi() {
-        repo.layoutMap(root.selectedBoardId)
+        // Pitch diturunkan dari Theme (satu sumber geometri node, DESIGN.md):
+        // langkah antar node = ukuran node + margin (spacingHuge).
+        repo.layoutMap(root.selectedBoardId,
+                       Theme.nodeWidth + Theme.spacingHuge,
+                       Theme.nodeHeight + Theme.spacingHuge)
         for (var i = 0; i < nodesRepeater.count; ++i) {
             var node = nodesRepeater.itemAt(i)
             var p = root.nodePosition(node.nodeId)
@@ -252,8 +307,15 @@ Rectangle {
             return -1
         var shapeId = repo.addShape(root.selectedBoardId, type, x, y, w, h, 0,
             JSON.stringify(points), JSON.stringify(root.shapeStyleFor(type)))
-        if (shapeId > 0 && root.asItem)
-            repo.convertShapeToEntity(shapeId, root.autoTitle(type))
+        if (shapeId <= 0) {
+            console.warn("commitShape: addShape failed")
+            return -1
+        }
+        if (root.asItem) {
+            var itemId = repo.convertShapeToEntity(shapeId, root.autoTitle(type))
+            if (itemId <= 0)
+                console.warn("commitShape: convertShapeToEntity failed for shape " + shapeId)
+        }
         return shapeId
     }
 
@@ -327,6 +389,7 @@ Rectangle {
             root.refreshOptions()
             root.refreshEdges()
             root.refreshShapes()
+            root.reloadTags()
         }
     }
 
@@ -342,6 +405,7 @@ Rectangle {
         refreshOptions()
         loadBoards()
         refreshEdges()
+        reloadTags()
     }
 
     ColumnLayout {
@@ -379,6 +443,14 @@ Rectangle {
                 objectName: "susunRapiButton"
                 text: qsTr("Susun rapi")
                 onClicked: root.susunRapi()
+            }
+
+            SearchField {
+                id: searchField
+                objectName: "searchField"
+                Layout.preferredWidth: 220
+                placeholder: qsTr("Cari…")
+                onSearchRequested: root.applyQuery(query)
             }
 
             SelectBox {
@@ -583,6 +655,16 @@ Rectangle {
                     onClicked: root.selectBoard(modelData.id)
                 }
             }
+        }
+
+        // Bar filter Prioritas + Tag — chip multi-toggle lintas view
+        FilterChipRow {
+            Layout.fillWidth: true
+            tags: root.tagList
+            activePriorities: root.filterPriorities
+            activeTagIds: root.filterTagIds
+            onPriorityToggled: root.togglePriorityFilter(value)
+            onTagToggled: root.toggleTagFilter(tagId)
         }
 
         // Canvas peta
@@ -831,14 +913,30 @@ Rectangle {
                             anchors.margins: Theme.spacingSmall
                             spacing: 2
 
-                            Text {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: title
-                                elide: Text.ElideRight
-                                font.family: Theme.fontFamilyBody
-                                font.pixelSize: Theme.fontSizeBody
-                                font.bold: true
-                                color: Theme.colorText
+                                spacing: Theme.spacingTiny
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: title
+                                    textFormat: Text.PlainText
+                                    elide: Text.ElideRight
+                                    font.family: Theme.fontFamilyBody
+                                    font.pixelSize: Theme.fontSizeBody
+                                    font.bold: true
+                                    color: Theme.colorText
+                                }
+
+                                PriorityBadge {
+                                    objectName: "prioBadge_" + itemId
+                                    priority: priority
+                                }
+                            }
+
+                            InlineTagRow {
+                                tags: model.tags
+                                maxChips: 2
                             }
 
                             RowLayout {
@@ -855,7 +953,7 @@ Rectangle {
                                 Item { Layout.fillWidth: true }
 
                                 Text {
-                                    visible: boardName.length > 0
+                                    visible: boardName.length > 0 && root.selectedBoardId === -1
                                     text: boardName
                                     elide: Text.ElideRight
                                     font.family: Theme.fontFamilyMono
@@ -953,9 +1051,31 @@ Rectangle {
                     color: Theme.colorAccent
                 }
 
+                Column {
+                    anchors.centerIn: parent
+                    visible: root.hasActiveFilter && mapProxy.count === 0
+                    spacing: Theme.spacingMedium
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("Tidak ada hasil")
+                        font.family: Theme.fontFamilyMono
+                        font.pixelSize: Theme.fontSizeMedium
+                        font.bold: true
+                        color: Theme.colorMuted
+                    }
+
+                    PrimaryButton {
+                        objectName: "clearFilter"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("Bersihkan filter")
+                        onClicked: root.clearFilters()
+                    }
+                }
+
                 Text {
                     anchors.centerIn: parent
-                    visible: mapProxy.count === 0
+                    visible: !root.hasActiveFilter && mapProxy.count === 0
                     text: qsTr("Belum ada Item di peta. Tambahkan Item dari Inbox atau view lain.")
                     font.family: Theme.fontFamilyBody
                     font.pixelSize: Theme.fontSizeMedium
@@ -1127,7 +1247,11 @@ Rectangle {
                 highlighted: true
                 disabled: root.shapePopupLocked
                 onClicked: {
-                    repo.convertShapeToEntity(root.shapePopupId, shapeTitleField.text)
+                    var itemId = repo.convertShapeToEntity(root.shapePopupId, shapeTitleField.text)
+                    if (itemId <= 0) {
+                        console.warn("shapeToItem: convert failed (empty title or linked?)")
+                        return
+                    }
                     root.clearSelection()
                     shapePopup.close()
                 }

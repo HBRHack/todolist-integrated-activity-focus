@@ -6,6 +6,9 @@ ComboBox {
     id: root
 
     property string placeholderText: ""
+    // Test seam: role opsional di model yang memuat objectName per baris
+    // (misal opsi "moveToInboxOption" di detailMoveBox).
+    property string delegateObjectNameRole: ""
 
     font.family: Theme.fontFamilyBody
     font.pixelSize: Theme.fontSizeSmall
@@ -43,6 +46,9 @@ ComboBox {
         width: root.width
         height: Theme.smallControlHeight
         padding: 0
+        objectName: root.delegateObjectNameRole.length > 0
+                    && typeof modelData === "object" && modelData[root.delegateObjectNameRole]
+                    ? modelData[root.delegateObjectNameRole] : ""
 
         background: Rectangle {
             radius: 0

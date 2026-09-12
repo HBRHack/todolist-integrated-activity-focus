@@ -48,6 +48,61 @@ Rectangle {
         return boardName + " · " + columnName
     }
 
+    property var tagList: []
+
+    function reloadTags() {
+        tagList = repo.tagList()
+    }
+
+    property string filterQuery: ""
+    property var filterPriorities: []
+    property var filterTagIds: []
+    property bool hasActiveFilter: filterQuery.length > 0
+        || filterPriorities.length > 0 || filterTagIds.length > 0
+
+    function applyQuery(query) {
+        filterQuery = query
+        listProxy.filterText = query
+    }
+
+    function togglePriorityFilter(value) {
+        var out = []
+        for (var i = 0; i < filterPriorities.length; ++i) {
+            if (filterPriorities[i] !== value)
+                out.push(filterPriorities[i])
+        }
+        if (out.length === filterPriorities.length)
+            out.push(value)
+        filterPriorities = out
+        listProxy.filterPriorities = filterPriorities
+    }
+
+    function toggleTagFilter(tagId) {
+        var out = []
+        for (var i = 0; i < filterTagIds.length; ++i) {
+            if (filterTagIds[i] !== tagId)
+                out.push(filterTagIds[i])
+        }
+        if (out.length === filterTagIds.length)
+            out.push(tagId)
+        filterTagIds = out
+        listProxy.filterTagIds = filterTagIds
+    }
+
+    function clearFilters() {
+        searchField.text = ""
+        filterQuery = ""
+        filterPriorities = []
+        filterTagIds = []
+        listProxy.filterText = ""
+        listProxy.filterPriorities = []
+        listProxy.filterTagIds = []
+    }
+
+    function onListMode(index) {
+        listProxy.sortMode = index === 0 ? "tanggal" : index === 1 ? "status" : "prioritas"
+    }
+
     function openDetail(itemId) {
         detailPopup.show(itemId)
     }
@@ -57,12 +112,14 @@ Rectangle {
         function onChanged() {
             root.reloadBoards()
             root.refreshOptions()
+            root.reloadTags()
         }
     }
 
     Component.onCompleted: {
         reloadBoards()
         refreshOptions()
+        reloadTags()
         listProxy.setItemModel(itemModel)
         listProxy.boardId = selectedBoardId
     }
@@ -89,6 +146,14 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
+            SearchField {
+                id: searchField
+                objectName: "searchField"
+                Layout.preferredWidth: 240
+                placeholder: qsTr("Cari…")
+                onSearchRequested: root.applyQuery(query)
+            }
+
             Text {
                 text: qsTr("Urutkan")
                 font.family: Theme.fontFamilyMono
@@ -103,8 +168,8 @@ Rectangle {
                 objectName: "sortModeBox"
                 Layout.preferredWidth: 200
                 Layout.preferredHeight: Theme.smallControlHeight
-                model: [qsTr("Tanggal"), qsTr("Status")]
-                onActivated: listProxy.sortMode = currentIndex === 0 ? "tanggal" : "status"
+                model: [qsTr("Tanggal"), qsTr("Status"), qsTr("Prioritas")]
+                onActivated: root.onListMode(currentIndex)
             }
         }
 
@@ -126,6 +191,16 @@ Rectangle {
                     onClicked: root.selectBoard(modelData.id)
                 }
             }
+        }
+
+        // Bar filter Prioritas + Tag — chip multi-toggle lintas view
+        FilterChipRow {
+            Layout.fillWidth: true
+            tags: root.tagList
+            activePriorities: root.filterPriorities
+            activeTagIds: root.filterTagIds
+            onPriorityToggled: root.togglePriorityFilter(value)
+            onTagToggled: root.toggleTagFilter(tagId)
         }
 
         // Table-led rows — hairline rules, tanpa box kartu (ritme beda dari Inbox)
@@ -174,15 +249,33 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    Text {
+                    PriorityBadge {
+                        objectName: "prioCell_" + itemId
+                        priority: model.priority
+                    }
+
+                    RowLayout {
+                        id: tagRow
+                        property var rowTags: model.tags
                         Layout.fillWidth: true
-                        text: title
-                        elide: Text.ElideRight
-                        font.family: Theme.fontFamilyBody
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
-                        color: Theme.colorText
-                        verticalAlignment: Text.AlignVCenter
+                        spacing: Theme.spacingTiny
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: model.title
+                            textFormat: Text.PlainText
+                            elide: Text.ElideRight
+                            font.family: Theme.fontFamilyBody
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            color: Theme.colorText
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        InlineTagRow {
+                            tags: tagRow.rowTags
+                            maxChips: 2
+                        }
                     }
 
                     Text {
@@ -213,9 +306,31 @@ Rectangle {
                 }
             }
 
+            Column {
+                anchors.centerIn: parent
+                visible: root.hasActiveFilter && listView.count === 0
+                spacing: Theme.spacingMedium
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTr("Tidak ada hasil")
+                    font.family: Theme.fontFamilyMono
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                    color: Theme.colorMuted
+                }
+
+                PrimaryButton {
+                    objectName: "clearFilter"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTr("Bersihkan filter")
+                    onClicked: root.clearFilters()
+                }
+            }
+
             Text {
                 anchors.centerIn: parent
-                visible: listView.count === 0
+                visible: !root.hasActiveFilter && listView.count === 0
                 text: qsTr("Belum ada Item.")
                 font.family: Theme.fontFamilyBody
                 font.pixelSize: Theme.fontSizeMedium

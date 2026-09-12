@@ -36,27 +36,27 @@ Semua view (List, Kalender, Kanban, Map) otomatis sinkron karena baca dari sumbe
 - [x] Strip warna kolom (per-kolom, token-based dari Theme)
 - [x] **View Map — navigasi & render dasar (SELESAI, dikonfirmasi lo)** — node bisa digeser bebas di canvas, sidebar nav "05 MAP" udah jalan
 
-### 🔲 Fase 1 — Standalone Entity
+### ✅ Fase 1 — Standalone Entity (SELESAI, kecuali search/filter sebagian)
 Item bisa eksis tanpa nempel Kanban ATAUPUN Mind Map (murni catatan/task polos).
-- [ ] Pastikan `column_id = NULL` + gak ada `node_position` = valid state "standalone"
-- [ ] View baru/perluasan `ViewInbox`/`ViewList` buat nampilin item standalone
-- [ ] UI "promote" standalone item → masuk ke Board (assign column_id) atau Map (assign node_position) — dua-duanya opsional, gak eksklusif
-- [ ] Tag/label multi (many-to-many table `tags` + `task_tags`)
-- [ ] **Skala Prioritas (Low/Med/High)** — ⬆️ **dinaikkan prioritas kerja, lihat §12** — field `priority` di `items`, ditampilkan sebagai warna/badge di Card (Kanban) dan Node (Map)
-- [ ] Search & filter lintas view
+- [x] Pastikan `column_id = NULL` + gak ada `node_position` = valid state "standalone" — Inbox filter by `column_id IS NULL` (`inboxproxymodel.cpp`), `moveItem(-1)` sengaja pertahankan posisi Peta
+- [x] View baru/perluasan `ViewInbox`/`ViewList` buat nampilin item standalone — tabel grup baru/lama/dikembalikan via `last_mapped_at`
+- [x] UI "promote" standalone item → masuk ke Board (assign column_id) atau Map (assign node_position) — dua-duanya opsional, gak eksklusif (`PromoteDialog.qml` dual-checkbox)
+- [x] Tag/label multi (many-to-many table `tags` + `item_tags` — ralat nama: bukan `task_tags`)
+- [x] **Skala Prioritas (Low/Med/High)** — ⬆️ **dinaikkan prioritas kerja, lihat §12** — field `priority` di `items` (1=Rendah bawaan/2=Sedang/3=Tinggi), ditampilkan sebagai warna/badge di Card (Kanban) dan Node (Map)
+- [ ] Search & filter lintas view — SEBAGIAN (audit Sep 2026): mesin `itemfilter.cpp` + UI sudah jalan di Inbox/List/Map, **belum di Kanban/Calendar**
 
-### 🎯 Fase 1.5 — Canvas Tooling ala Excalidraw (PRIORITAS SAAT INI)
+### ✅ Fase 1.5 — Canvas Tooling ala Excalidraw (SELESAI — audit Sep 2026)
 Papan Mind Map sekarang kosong (cuma bisa gerak bebas doang). Sebelum masuk binding/dependency, kanvas-nya sendiri harus punya tools dasar dulu.
-- [ ] Lock/Unlock canvas — toggle "pan bebas" vs "terkunci" (posisi papan gak kegeser gak sengaja pas nge-draw)
-- [ ] Shape tools: kotak, lingkaran, segitiga, garis/panah — digambar bebas, independen dari Node/Entity (murni anotasi visual)
-- [ ] Freehand draw (coret-coret bebas, bukan node terstruktur)
-- [ ] Opsi simpan tiap objek gambar: **standalone** (nempel ke board Mind Map itu doang) ATAU **jadi Entity** (masuk sebagai Node yang bisa di-bind ke Kanban/Timeline seperti Fase 3+)
-- [ ] Tabel baru `canvas_shapes` (id, board_id, type, x, y, width, height, points, style) — TERPISAH dari `items`, jangan dipaksa masuk situ karena beda sifat data
+- [x] Lock/Unlock canvas — toggle "pan bebas" vs "terkunci" (posisi papan gak kegeser gak sengaja pas nge-draw) — `appSettings.canvasLocked` persisten (deviasi disetujui dari spec awal "memori saja")
+- [x] Shape tools: kotak, lingkaran, segitiga, garis/panah — digambar bebas, independen dari Node/Entity (murni anotasi visual) — 6 tombol (Garis & Panah di-split)
+- [x] Freehand draw (coret-coret bebas, bukan node terstruktur) — sampling 3px, points ternormalisasi 0..1
+- [x] Opsi simpan tiap objek gambar: **standalone** (nempel ke board Mind Map itu doang) ATAU **jadi Entity** (masuk sebagai Node yang bisa di-bind ke Kanban/Timeline seperti Fase 3+) — dua jalur: toggle "As Item" (auto-title) + klik-kanan "Jadikan Item"; linked = anti-edit, hapus Item → SET NULL jadi anotasi lagi
+- [x] Tabel baru `canvas_shapes` (id, board_id, type, x, y, width, height, rotation, points, style, linked_item_id) — TERPISAH dari `items`, jangan dipaksa masuk situ karena beda sifat data
 
-### 🔲 Fase 2 — Sinkronisasi Visual Kanban ↔ Map
+### 🔲 Fase 2 — Sinkronisasi Visual Kanban ↔ Map (SEBAGIAN — audit Sep 2026)
 Bagian paling riskan — butuh SATU sumber status yang dibaca dua UI beda.
-- [ ] `changed()` signal dari Repository harus konsisten dipicu di semua write path
-- [ ] `ViewMap.qml` baca `column_id`/status item buat nentuin warna/indikator node (bukan state terpisah yang di-sync manual)
+- [x] `changed()` signal dari Repository harus konsisten dipicu di semua write path
+- [ ] `ViewMap.qml` baca `column_id`/status item buat nentuin warna/indikator node (bukan state terpisah yang di-sync manual) — BELUM: node masih `colorSurface` fixed, Kanban sudah pakai `columnColor(colorKey)`
 - [ ] Test: ubah status di Kanban → buka Map → warna node harus ikut berubah tanpa reload manual
 
 ### 🔲 Fase 3 — Nested Sub-task + Dependency Logic
@@ -114,21 +114,27 @@ Mode kerja fullscreen isolasi distraksi, sekaligus quick-capture ide dadakan.
 ## 6. Data Model (Unified Entity — menggantikan draft `boards/tasks` lama)
 
 ```
-items          (id, title, description, due_date, due_time, column_id FK,
-                priority, hierarchy_level_id FK nullable, order_index,
-                created_at, updated_at)
-item_edges     (id, from_item_id FK, to_item_id FK, kind
-                — "subtask_of" | "blocks" | "parent_of" | mind-map link)
-node_positions (item_id FK, board_id FK, pos_x, pos_y)
-canvas_shapes  (id, board_id FK, type, x, y, width, height, points, style
-                — anotasi visual non-entity, TERPISAH dari items)
+items          (id, column_id FK nullable, board_id FK nullable,
+                title, description, due_date, due_time nullable,
+                priority 1/2/3, order_index,
+                created_at, updated_at, last_mapped_at nullable)
+item_edges     (id, item_id FK, parent_item_id FK, kind
+                — "relasi" (saat ini, generik) | "subtask_of" | "blocks" | "parent_of" (Fase 3/6, belum dipakai))
+node_positions (item_id FK PK, x, y — satu ruang koordinat bersama, tanpa board_id)
+canvas_shapes  (id, board_id FK nullable — NULL = global, type, x, y, width, height,
+                rotation, points JSON 0..1, style JSON token Theme,
+                created_at, linked_item_id FK nullable ON DELETE SET NULL)
+                — anotasi visual non-entity, TERPISAH dari items — SELESAI Fase 1.5, skema v4
 boards         (id, name, created_at)
-columns        (id, board_id FK, name, order_index)
-tags           (id, name)
-task_tags      (item_id FK, tag_id FK)
-hierarchy_presets (id, name, levels JSON)     — Fase 6
-item_rules     (id, item_id/level_id, rule_type, condition JSON, action JSON) — Fase 6
+columns        (id, board_id FK, name, order_index, color_key DEFAULT 'accent' — skema v3)
+tags           (id, name UNIQUE COLLATE NOCASE, color) — skema v5
+item_tags      (item_id FK, tag_id FK, PK keduanya) — ralat: bukan `task_tags` — skema v5
+app_settings   (key, value — mis. mapMode, inboxMode, canvasLocked)
+hierarchy_presets (id, name, levels JSON)     — Fase 6 (belum)
+item_rules     (id, item_id/level_id, rule_type, condition JSON, action JSON) — Fase 6 (belum)
 ```
+
+Skema saat ini `PRAGMA user_version = 5` (v1 basis → v2 `items.board_id` → v3 `columns.color_key` → v4 `canvas_shapes` → v5 `tags`+`item_tags`).
 
 **Kunci arsitektur:** `items.column_id` nullable = standalone valid. `node_positions` terpisah dari `items` = item bisa ada di Map tanpa nempel Kanban, atau sebaliknya. `canvas_shapes` sengaja dipisah dari `items` karena beda sifat data (anotasi visual vs entity task sungguhan).
 
@@ -162,12 +168,12 @@ Satu **Theme singleton** (`Theme.qml`) berisi semua warna/font/spacing sebagai p
 ## 11. Setup Wizard
 Pas pertama buka app: buat board pertama, pilih nama, opsional pilih tema. Nanti di Fase 6 diperluas: pilih preset hierarchy atau skip.
 
-## 12. Prioritas Kerja Sekarang (ringkasan urutan)
-1. **Fase 1.5 — Canvas Tooling** (lock/unlock, shape tools, freehand draw) ← **KERJAIN INI DULU**
-2. **Skala Prioritas** (Low/Med/High, dari Fase 1) — kecil tapi kepake di semua view
-3. **Nested Sub-task** (Fase 3) — to-do list bertingkat, task bisa punya sub-task
-4. Sisa Fase 1 — Standalone Entity (Inbox view, tag, search/filter)
-5. Fase 2 — Sinkronisasi visual Kanban↔Map
+## 12. Prioritas Kerja Sekarang (ringkasan urutan — direvisi Sep 2026)
+1. ~~**Fase 1.5 — Canvas Tooling** (lock/unlock, shape tools, freehand draw) ← **KERJAIN INI DULU**~~ — **SELESAI**
+2. ~~**Skala Prioritas** (Low/Med/High, dari Fase 1) — kecil tapi kepake di semua view~~ — **SELESAI**
+3. **Nested Sub-task** (Fase 3) — to-do list bertingkat, task bisa punya sub-task ← **BERIKUTNYA**
+4. Sisa Fase 1 — Search/filter Kanban + Calendar (Inbox/List/Map sudah jalan)
+5. Fase 2 — Sinkronisasi visual Kanban↔Map (warna node dari `column_id`)
 6. Fase 4 s.d. 7 sesuai urutan nomor di atas (Timeline/Alarm → Notion-lite → Hierarchy Custom → Focus Mode)
 
 Urutan ini beda dari urutan nomor Fase di atas (§5) dengan sengaja — nomor Fase itu urutan LOGIS/ketergantungan teknis, urutan §12 ini yang PRAKTIS dikerjain (skala prioritas & nested sub-task itu kecil-cepat-kepake, jadi dimajuin duluan meski secara nomor Fase ada di belakang Canvas Tooling).              

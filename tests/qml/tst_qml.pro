@@ -26,7 +26,8 @@ SOURCES += \
     ../../src/calendarmodel.cpp \
     ../../src/listproxymodel.cpp \
     ../../src/mapproxymodel.cpp \
-    ../../src/nodelayout.cpp
+    ../../src/nodelayout.cpp \
+    ../../src/itemfilter.cpp
 
 HEADERS += \
     ../../src/models.h \
@@ -41,4 +42,5 @@ HEADERS += \
     ../../src/calendarmodel.h \
     ../../src/listproxymodel.h \
     ../../src/mapproxymodel.h \
-    ../../src/nodelayout.h
+    ../../src/nodelayout.h \
+    ../../src/itemfilter.h

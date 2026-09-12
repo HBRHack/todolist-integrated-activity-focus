@@ -17,8 +17,12 @@ Ruang yang menampilkan semua Item yang belum dipetakan ke board mana pun.
 _Avoid_: lumbung ide, inbox ide
 
 **Memetakan (to map)**:
-Aksi menempatkan Item dari Inbox ke dalam board (dan kolom) tertentu.
+Aksi menempatkan Item dari Inbox ke dalam board (dan kolom) tertentu, dan/atau ke Peta (node + posisi) — melalui dialog Petakan yang tidak saling eksklusif.
 _Avoid_: assign, pindah proyek
+
+**Kembalikan ke Inbox (un-map)**:
+Aksi mengembalikan Item yang sudah dipetakan (ke board/kolom maupun Peta) menjadi belum dipetakan — `column_id` dikosongkan, node di Peta dan `last_mapped_at` tetap dipertahankan sehingga Item masuk grup Inbox "Dikembalikan".
+_Avoid_: hapus pemetaan, unassign
 
 **Board (Idea)**:
 Kelompok/proyek yang menampung Item yang sudah dipetakan; saat membuat board baru, UI menyebutnya "Idea".
@@ -75,3 +79,11 @@ _Avoid_: parser satu bahasa, input bebas tanpa umpan balik
 **Lokalisasi (i18n)**:
 Dua bahasa: Indonesia (sumber) + Inggris (`ToDoList-Integrated_en.ts`). Pemilihan otomatis dari sistem locale: `en_*` → Inggris, selain itu Indonesia. String UI harus selalu lewat `qsTr()`; nama bulan/hari memakai `Qt.locale()`.
 _Avoid_: switch bahasa manual, teks UI hardcoded
+
+**Prioritas**:
+Skala tiga nilai yang mengurutkan kepentingan sebuah Item: 1 = Rendah (bawaan), 2 = Sedang, 3 = Tinggi. Data tersimpan di `items.priority`, ditampilkan sebagai badge kecil di baris Inbox/List dan bisa diubah dari popup detail Item; di view List tersedia mode urut "Prioritas" (Tinggi→Sedang→Rendah).
+_Avoid_: urgent, penting, flag
+
+**Tag**:
+Label berwarna (tabel `tags` + `item_tags`) yang bisa ditempelkan ke banyak Item sekaligus dan satu Item boleh punya banyak Tag; dikelola lewat popup detail Item, tampil sebagai chip kecil (dot warna + nama) di baris Inbox/List, dan menjadi filter ("Semua" + tiap Tag) di bar filter Inbox & List.
+_Avoid_: kategori, label klasifikasi, tema

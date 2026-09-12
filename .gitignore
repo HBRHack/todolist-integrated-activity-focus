@@ -88,3 +88,4 @@ CMakeLists.txt.user*
 /qml_qml_qmlcache.qrc
 # build-tests/ (shadow build untuk suite QML + backend)
 /build-tests/
+/tests/
