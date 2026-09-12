@@ -28,7 +28,7 @@ mind-map (Peta) view.
 | | |
 |---|---|
 | Language | C++17 (backend) + QML/Qt Quick (UI) |
-| Framework | **Qt 5.15.2** (pinned toolchain: `/home/banghbr/Qt515/5.15.2/gcc_64/bin/`) |
+| Framework | **Qt 5.15.2** |
 | Build | qmake (not CMake) |
 | DB | SQLite via QtSql |
 | Tests | QtTest (backend) + QtQuickTest (QML) |
