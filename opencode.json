@@ -1,6 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "skills": {
-    "paths": ["/home/banghbr/.opencode/skills"]
+    "paths": [
+      "/home/banghbr/.opencode/skills",
+      "/home/banghbr/.agents/skills",
+      "/home/banghbr/.agents/qt/qt5.15/skills"
+    ]
   }
 }
